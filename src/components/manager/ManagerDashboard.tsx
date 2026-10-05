@@ -372,7 +372,7 @@ export function ManagerDashboard() {
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6">
           <h2 className="text-base font-bold text-slate-900">Registered Members</h2>
           <p className="text-xs text-slate-500 mt-0.5 mb-4">
-            Actual users who have signed in with Google.
+            Registered platform members and administrators.
           </p>
 
           <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
