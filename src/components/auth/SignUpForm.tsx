@@ -2,12 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { User, Mail, Lock, Eye, EyeOff, AlertCircle, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/layout/Logo';
 
 export function SignUpForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '';
 
