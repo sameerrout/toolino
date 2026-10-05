@@ -67,10 +67,14 @@ export function getDb(): DatabaseSchema {
   try {
     ensureDbFile();
     const raw = fs.readFileSync(DB_FILE, 'utf-8');
+    if (!raw || !raw.trim()) {
+      return INITIAL_DB;
+    }
     const parsed = JSON.parse(raw) as DatabaseSchema;
-    if (!parsed.users) parsed.users = [];
-    if (!parsed.toolUsage) parsed.toolUsage = {};
-    if (!parsed.events) parsed.events = [];
+    if (!parsed || typeof parsed !== 'object') return INITIAL_DB;
+    if (!Array.isArray(parsed.users)) parsed.users = [];
+    if (!parsed.toolUsage || typeof parsed.toolUsage !== 'object') parsed.toolUsage = {};
+    if (!Array.isArray(parsed.events)) parsed.events = [];
     return parsed;
   } catch (error) {
     console.error('Failed to read database store:', error);
@@ -154,6 +158,14 @@ export function registerEmailUser(
   const db = getDb();
   const existing = db.users.find((u) => u.email.toLowerCase() === normalizedEmail);
   if (existing) {
+    if (isManagerEmail(normalizedEmail)) {
+      existing.passwordHash = hashPassword(password);
+      existing.role = 'manager';
+      if (name) existing.name = name;
+      existing.lastLoginAt = new Date().toISOString();
+      saveDb(db);
+      return { user: existing };
+    }
     return { error: 'An account with this email already exists.' };
   }
 

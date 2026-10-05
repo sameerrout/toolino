@@ -72,15 +72,13 @@ export function SignUpForm() {
         throw new Error(data.error || 'Failed to create account. Please try again.');
       }
 
-      // Check redirect destination
-      if (redirectUrl && redirectUrl.startsWith('/')) {
-        router.push(redirectUrl);
-      } else if (data.user?.isManager) {
-        router.push('/manager/');
-      } else {
-        router.push('/');
-      }
-      router.refresh();
+      // Navigate with full state update
+      const target = redirectUrl && redirectUrl.startsWith('/')
+        ? redirectUrl
+        : data.user?.isManager
+          ? '/manager/'
+          : '/';
+      window.location.href = target;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
       setError(message);

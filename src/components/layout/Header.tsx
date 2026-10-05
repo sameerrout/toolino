@@ -153,7 +153,7 @@ export function Header() {
         </nav>
 
         {/* Right Action / Auth Controls */}
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-3">
           {user ? (
             <div className="flex items-center gap-3">
               {user.isManager && (
