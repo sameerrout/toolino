@@ -4,7 +4,13 @@ import { createSessionToken, isManagerEmail, SESSION_COOKIE_NAME } from '@/lib/a
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json(
+        { error: 'Email and password are required.' },
+        { status: 400 }
+      );
+    }
     const { email, password } = body;
 
     if (!email || !password) {

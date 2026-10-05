@@ -4,7 +4,10 @@ import { createSessionToken, isManagerEmail, SESSION_COOKIE_NAME } from '@/lib/a
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Please enter valid registration details.' }, { status: 400 });
+    }
     const { email, password, confirmPassword, name } = body;
 
     if (!email || typeof email !== 'string') {

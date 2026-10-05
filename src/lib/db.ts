@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import crypto from 'node:crypto';
 import { isManagerEmail } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
@@ -31,14 +32,14 @@ export interface DatabaseSchema {
   events: ActivityEvent[];
 }
 
-const DB_DIR = path.join(process.cwd(), '.data');
-const DB_FILE = path.join(DB_DIR, 'db.json');
-
 const INITIAL_DB: DatabaseSchema = {
   users: [],
   toolUsage: {},
   events: [],
 };
+
+// Global in-memory cache for fast lookup and serverless resilience
+let memoryDb: DatabaseSchema | null = null;
 
 // Global Prisma instance for connection reuse across hot-reloads
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
@@ -51,13 +52,29 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-function ensureDbFile(): void {
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
+function getDbFilePath(): string {
+  // Use /tmp on Vercel or AWS Lambda where the project root is read-only
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpDir = path.join(os.tmpdir(), '.toolino_data');
+    return path.join(tmpDir, 'db.json');
   }
-  if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(INITIAL_DB, null, 2), 'utf-8');
+  return path.join(process.cwd(), '.data', 'db.json');
+}
+
+function ensureDbFile(): string {
+  const filePath = getDbFilePath();
+  const dirPath = path.dirname(filePath);
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, JSON.stringify(INITIAL_DB, null, 2), 'utf-8');
+    }
+  } catch {
+    // If filesystem write fails, in-memory memoryDb is used
   }
+  return filePath;
 }
 
 /**
@@ -65,33 +82,41 @@ function ensureDbFile(): void {
  */
 export function getDb(): DatabaseSchema {
   try {
-    ensureDbFile();
-    const raw = fs.readFileSync(DB_FILE, 'utf-8');
-    if (!raw || !raw.trim()) {
-      return INITIAL_DB;
+    const filePath = ensureDbFile();
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      if (raw && raw.trim()) {
+        const parsed = JSON.parse(raw) as DatabaseSchema;
+        if (parsed && typeof parsed === 'object') {
+          if (!Array.isArray(parsed.users)) parsed.users = [];
+          if (!parsed.toolUsage || typeof parsed.toolUsage !== 'object') parsed.toolUsage = {};
+          if (!Array.isArray(parsed.events)) parsed.events = [];
+          memoryDb = parsed;
+          return parsed;
+        }
+      }
     }
-    const parsed = JSON.parse(raw) as DatabaseSchema;
-    if (!parsed || typeof parsed !== 'object') return INITIAL_DB;
-    if (!Array.isArray(parsed.users)) parsed.users = [];
-    if (!parsed.toolUsage || typeof parsed.toolUsage !== 'object') parsed.toolUsage = {};
-    if (!Array.isArray(parsed.events)) parsed.events = [];
-    return parsed;
   } catch (error) {
     console.error('Failed to read database store:', error);
-    return INITIAL_DB;
   }
+
+  if (!memoryDb) {
+    memoryDb = { users: [], toolUsage: {}, events: [] };
+  }
+  return memoryDb;
 }
 
 export function saveDb(data: DatabaseSchema): void {
+  memoryDb = data;
   try {
-    ensureDbFile();
-    const tempFile = `${DB_FILE}.tmp`;
+    const filePath = ensureDbFile();
+    const tempFile = `${filePath}.tmp`;
     fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
     try {
-      fs.renameSync(tempFile, DB_FILE);
+      fs.renameSync(tempFile, filePath);
     } catch {
       // Fallback for Windows file locking / OneDrive sync
-      fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
       if (fs.existsSync(tempFile)) {
         try {
           fs.unlinkSync(tempFile);
@@ -205,49 +230,40 @@ export function authenticateEmailUser(
   const db = getDb();
   const user = db.users.find((u) => u.email.toLowerCase() === normalizedEmail);
   const now = new Date().toISOString();
+  const isManager = isManagerEmail(normalizedEmail);
 
-  // Special secure manager handling
-  if (isManagerEmail(normalizedEmail)) {
+  // If user does not exist in DB:
+  if (!user) {
     const envManagerPassword = process.env.MANAGER_PASSWORD;
-    const isEnvPasswordValid = envManagerPassword && password === envManagerPassword;
-    const isDbPasswordValid = user?.passwordHash && verifyPassword(password, user.passwordHash);
-
-    if (isEnvPasswordValid || isDbPasswordValid) {
-      const activeUser: UserRecord = user || {
+    if (isManager && envManagerPassword && password === envManagerPassword) {
+      const activeUser: UserRecord = {
         id: `mgr_${Date.now()}`,
         email: normalizedEmail,
         name: normalizedEmail.split('@')[0],
         authProvider: 'email',
+        passwordHash: hashPassword(password),
         role: 'manager',
         createdAt: now,
         lastLoginAt: now,
       };
-
-      if (!user) {
-        db.users.push(activeUser);
-      } else {
-        activeUser.lastLoginAt = now;
-      }
-
-      db.events.unshift({
-        timestamp: now,
-        type: 'login',
-        email: activeUser.email,
-      });
-      if (db.events.length > 200) db.events = db.events.slice(0, 200);
+      db.users.push(activeUser);
       saveDb(db);
-
       return { user: activeUser };
     }
-  }
-
-  // Normal user verification
-  if (!user || !user.passwordHash) {
     return { error: 'Invalid email or password.' };
   }
 
-  if (!verifyPassword(password, user.passwordHash)) {
+  // Match stored password hash in database
+  const passwordMatches = user.passwordHash ? verifyPassword(password, user.passwordHash) : false;
+  const isEnvManagerValid = isManager && process.env.MANAGER_PASSWORD && password === process.env.MANAGER_PASSWORD;
+
+  if (!passwordMatches && !isEnvManagerValid) {
     return { error: 'Invalid email or password.' };
+  }
+
+  // Ensure role is manager if on manager email list
+  if (isManager) {
+    user.role = 'manager';
   }
 
   user.lastLoginAt = now;
