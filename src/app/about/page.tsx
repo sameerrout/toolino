@@ -13,9 +13,9 @@ import { TOOL_REGISTRY } from '@/data/toolRegistry';
 export const metadata: Metadata = buildMetadata({
   title: `About ${BRAND.name} — Who Runs This Site and Why`,
   description:
-    'Why Toolnova exists, how the browser-only approach works, what it costs to run, and the principles behind every tool on the site. No accounts, no uploads, no dark patterns.',
+    'Why Toolino exists, how the browser-only approach works, what it costs to run, and the principles behind every tool on the site. No accounts, no uploads, no dark patterns.',
   path: '/about/',
-  keywords: ['about toolnova', 'privacy first tools', 'browser based file tools'],
+  keywords: ['about toolino', 'privacy first tools', 'browser based file tools'],
 });
 
 const breadcrumbs = [{ name: 'Home', path: '/' }, { name: 'About' }];

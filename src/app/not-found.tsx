@@ -8,7 +8,7 @@ import { toolPath, type ToolSlug } from '@/lib/tools';
 export const metadata: Metadata = buildMetadata({
   title: 'Page Not Found — Try One of Our Free Tools Instead',
   description:
-    'That page does not exist. Browse Toolnova\u2019s free browser-based PDF, image, file, text and calculator tools instead, all of which run without uploading your files.',
+    'That page does not exist. Browse Toolino\u2019s free browser-based PDF, image, file, text and calculator tools instead, all of which run without uploading your files.',
   path: '/404/',
   noIndex: true,
 });

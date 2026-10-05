@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm';
 
 export const metadata: Metadata = {
-  title: 'Reset Password - Toolnova',
-  description: 'Set a new password for your Toolnova account.',
+  title: 'Reset Password - Toolino',
+  description: 'Set a new password for your Toolino account.',
 };
 
 export default function ResetPasswordPage() {

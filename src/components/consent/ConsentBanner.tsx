@@ -187,4 +187,4 @@ export function ConsentBanner() {
 }
 
 const BRAND_CONSENT_COPY =
-  'Toolnova uses cookies for two optional things: counting visits and showing ads that keep the site free. The tools themselves never need cookies, and your files are never uploaded. You can change your mind at any time from the footer.';
+  'Toolino uses cookies for two optional things: counting visits and showing ads that keep the site free. The tools themselves never need cookies, and your files are never uploaded. You can change your mind at any time from the footer.';

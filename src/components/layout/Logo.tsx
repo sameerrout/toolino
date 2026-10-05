@@ -1,10 +1,10 @@
 import Image from 'next/image';
 
 /**
- * Toolnova Logo component.
+ * Toolino Logo component.
  *
- * Official Toolnova logo: vibrant round emblem (/logo1.png)
- * accompanied by the signature bold wordmark "Tool" + blue "nova".
+ * Official Toolino logo: vibrant round emblem (/logo1.png)
+ * accompanied by the signature bold wordmark "Tool" + blue "ino".
  */
 export function Logo({
   className = '',
@@ -19,7 +19,7 @@ export function Logo({
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <Image
         src="/logo1.png"
-        alt="Toolnova Logo"
+        alt="Toolino Logo"
         width={size}
         height={size}
         className="object-contain transition-transform duration-300 group-hover:scale-105"
@@ -28,7 +28,7 @@ export function Logo({
       />
       {showWordmark && (
         <span className="text-2xl font-extrabold tracking-tight text-slate-900 select-none">
-          Tool<span className="text-blue-600">nova</span>
+          Tool<span className="text-blue-600">ino</span>
         </span>
       )}
     </span>

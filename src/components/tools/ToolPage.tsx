@@ -23,6 +23,7 @@ import { CATEGORY_META } from '@/data/categories';
 import { getRelatedTools, requireTool, type ToolRegistryEntry } from '@/data/toolRegistry';
 import type { ToolContent } from '@/content/types';
 import type { ToolSlug } from '@/lib/tools';
+import { BRAND } from '@/lib/site';
 
 /**
  * Shared page chrome for every tool.
@@ -74,7 +75,7 @@ export function ToolPage({
             name: content.howTo.heading,
             description: content.howTo.intro,
             steps: content.howTo.steps.map((step) => ({ name: step.name, text: step.text })),
-            tool: [`${tool.name} on ${'Toolnova'}`],
+            tool: [`${tool.name} on ${BRAND.name}`],
           }),
           faqSchema(content.faqs),
         ]}

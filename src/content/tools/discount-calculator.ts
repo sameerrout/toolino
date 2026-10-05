@@ -63,7 +63,7 @@ export const discountCalculatorContent: ToolContent = {
     heading: 'Your budget and pricing calculations stay private',
     paragraphs: [
       'Commercial shopping tools often monitor consumer price queries to profile purchasing intent and sell data to affiliate ad networks.',
-      'Toolnova evaluates all discount math entirely within your local browser sandbox. No server requests are triggered when you calculate discounts.',
+      'Toolino evaluates all discount math entirely within your local browser sandbox. No server requests are triggered when you calculate discounts.',
       'Your pricing calculations are never recorded or monetized.',
     ],
   },

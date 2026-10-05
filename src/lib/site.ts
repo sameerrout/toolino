@@ -9,23 +9,23 @@
 
 export const BRAND = {
   /** User-facing brand name. Used in titles, footer, JSON-LD, emails. */
-  name: 'Toolnova',
+  name: 'Toolino',
   /** Short tagline shown in the footer and the manifest. */
   tagline: 'All-in-One Free Online Tools',
   /** Longer positioning line used on the homepage and in the Organization schema. */
   description:
     'Free, fast, and privacy-conscious online tools. Convert, edit, and optimize PDFs, images, and documents easily inside your browser without uploading files to servers.',
   /** Public contact address for the Contact page and legal notices. */
-  email: 'support@toolnova.com',
+  email: 'support@toolino.com',
   /** Postal-style locality used in legal pages (kept generic on purpose). */
   jurisdiction: 'England and Wales',
   /** Twitter/X handle, or null when the site has no account yet. */
   twitter: null as string | null,
 } as const;
 
-/** Trailing-slash-free canonical origin, e.g. `https://toolnova.com`. */
+/** Trailing-slash-free canonical origin, e.g. `https://toolino.com`. */
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://toolnova.com'
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://toolino.com'
 ).replace(/\/+$/, '');
 
 /** Builds an absolute URL for a site-relative path. */

@@ -5,9 +5,9 @@ import { BRAND } from '@/lib/site';
 
 const META: LegalPageMeta = {
   title: 'Disclaimer',
-  metaTitle: 'Disclaimer — Toolnova Tools Are Not Professional Advice',
+  metaTitle: 'Disclaimer — Toolino Tools Are Not Professional Advice',
   metaDescription:
-    'Toolnova provides general information and browser-based estimates only, not legal, financial, tax, medical or accounting advice. Verify important results.',
+    'Toolino provides general information and browser-based estimates only, not legal, financial, tax, medical or accounting advice. Verify important results.',
   path: '/disclaimer/',
   updated: '2026-01-05',
   intro:

@@ -1,7 +1,7 @@
 /**
  * Typed request/response bridge for Web Workers.
  *
- * Every worker in Toolnova speaks the same tiny protocol so that cancellation,
+ * Every worker in Toolino speaks the same tiny protocol so that cancellation,
  * error serialization and progress reporting behave identically everywhere:
  *
  *   main -> worker : { id, type, payload }

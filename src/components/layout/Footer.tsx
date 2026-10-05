@@ -6,9 +6,9 @@ import { toolPath } from '@/lib/tools';
 import { ConsentSettingsLink } from '@/components/consent/ConsentSettingsLink';
 
 /**
- * Toolnova Footer.
+ * Toolino Footer.
  *
- * Official Toolnova deep blue theme (bg-blue-900 / border-blue-800),
+ * Official Toolino deep blue theme (bg-blue-900 / border-blue-800),
  * comprehensive category columns, legal compliance links, and copyright text.
  */
 export function Footer() {
@@ -20,7 +20,7 @@ export function Footer() {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-2">
               <span className="text-2xl font-extrabold tracking-tight text-white">
-                Tool<span className="text-blue-400">nova</span>
+                Tool<span className="text-blue-400">ino</span>
               </span>
             </div>
             <p className="text-blue-200 text-xs leading-relaxed max-w-sm">

@@ -5,9 +5,9 @@ import { BRAND } from '@/lib/site';
 
 const META: LegalPageMeta = {
   title: 'Cookie Policy',
-  metaTitle: 'Cookie Policy — The Cookies Toolnova Sets and How to Refuse',
+  metaTitle: 'Cookie Policy — The Cookies Toolino Sets and How to Refuse',
   metaDescription:
-    'Every cookie and local storage item Toolnova may set, who sets it, why, and how long it lasts, plus how to refuse cookies and still use every tool.',
+    'Every cookie and local storage item Toolino may set, who sets it, why, and how long it lasts, plus how to refuse cookies and still use every tool.',
   path: '/cookies/',
   updated: '2026-01-05',
   intro:

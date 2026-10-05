@@ -34,7 +34,7 @@ export const imageToTextContent: ToolContent = {
     ],
   },
   benefits: {
-    heading: 'Why use Toolnova for image text extraction',
+    heading: 'Why use Toolino for image text extraction',
     intro: 'Built for students, researchers, paralegals, accountants, and office workers.',
     items: [
       {
@@ -63,7 +63,7 @@ export const imageToTextContent: ToolContent = {
     heading: 'Your scanned documents never leave your computer',
     paragraphs: [
       'Document scans frequently contain sensitive personal data: names, addresses, social security numbers, banking details, and medical records. Cloud-based OCR services store copies of these files on their servers and may analyze them for training data.',
-      'Toolnova uses client-side WebAssembly to execute OCR recognition locally inside your web browser. The image is decoded into canvas memory, analyzed by the local worker, and output directly to your screen.',
+      'Toolino uses client-side WebAssembly to execute OCR recognition locally inside your web browser. The image is decoded into canvas memory, analyzed by the local worker, and output directly to your screen.',
       'No image data or extracted text is transmitted across the internet. You can confirm this by monitoring the Network tab in your browser developer tools.',
     ],
   },

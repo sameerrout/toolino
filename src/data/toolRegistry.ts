@@ -1,5 +1,5 @@
 /**
- * The Toolnova tool registry - the single source of truth.
+ * The Toolino tool registry - the single source of truth.
  *
  * Everything derives from this file: static routes, sitemap.xml, navigation,
  * category hubs, related-tool links, breadcrumbs, JSON-LD and the SEO prose

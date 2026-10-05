@@ -285,7 +285,7 @@ export function analyseText(text: string): TextAnalysis {
  */
 export function buildStatisticsReport(analysis: TextAnalysis, sourceName?: string): string {
   const lines: string[] = [
-    'Toolnova word count report',
+    'Toolino word count report',
     `Generated: ${new Date().toISOString()}`,
     ...(sourceName ? [`Source: ${sourceName}`] : []),
     '',

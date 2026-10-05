@@ -5,13 +5,13 @@ import { BRAND } from '@/lib/site';
 
 const META: LegalPageMeta = {
   title: 'Terms of Service',
-  metaTitle: 'Terms of Service — The Rules for Using Toolnova Tools',
+  metaTitle: 'Terms of Service — The Rules for Using Toolino Tools',
   metaDescription:
-    'The terms that govern your use of Toolnova: free browser-based tools provided as is, no account or fee, your files stay yours, and the limits of our liability.',
+    'The terms that govern your use of Toolino: free browser-based tools provided as is, no account or fee, your files stay yours, and the limits of our liability.',
   path: '/terms/',
   updated: '2026-01-05',
   intro:
-    'These terms are the agreement between you and Toolnova when you use this website and the tools on it. The tools run in your browser, they are free, and we never receive your files, so the terms are short. Please read the few obligations they place on you and the limits on what we can promise.',
+    'These terms are the agreement between you and Toolino when you use this website and the tools on it. The tools run in your browser, they are free, and we never receive your files, so the terms are short. Please read the few obligations they place on you and the limits on what we can promise.',
 };
 
 export const metadata: Metadata = legalMetadata(META);

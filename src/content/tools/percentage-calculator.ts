@@ -63,7 +63,7 @@ export const percentageCalculatorContent: ToolContent = {
     heading: 'Your financial and numerical data remains private',
     paragraphs: [
       'Users frequently calculate personal salary increments, confidential company revenues, or sensitive pricing figures using online percentage tools.',
-      'Toolnova computes all mathematical formulas entirely in your browser memory. We never record your entered values, log your calculations, or transmit figures to remote endpoints.',
+      'Toolino computes all mathematical formulas entirely in your browser memory. We never record your entered values, log your calculations, or transmit figures to remote endpoints.',
       'Your financial privacy is completely protected when using our calculators.',
     ],
   },

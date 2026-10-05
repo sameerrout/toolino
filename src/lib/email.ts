@@ -1,5 +1,5 @@
 /**
- * Toolnova - Transactional Email Delivery Service
+ * Toolino - Transactional Email Delivery Service
  *
  * Supports AWS SES / SMTP / transactional email providers.
  * Server-only module - credentials never exposed to the client.
@@ -42,11 +42,11 @@ function getEmailTransporter() {
  */
 export async function sendPasswordResetEmail({ to, resetToken }: SendPasswordResetParams): Promise<boolean> {
   const resetUrl = `${SITE_URL}/reset-password/?token=${encodeURIComponent(resetToken)}`;
-  const fromAddress = process.env.EMAIL_FROM || `Toolnova <noreply@${new URL(SITE_URL).host}>`;
+  const fromAddress = process.env.EMAIL_FROM || `Toolino <noreply@${new URL(SITE_URL).host}>`;
 
-  const subject = 'Password Reset Request - Toolnova';
+  const subject = 'Password Reset Request - Toolino';
 
-  const textContent = `Toolnova\n\nPassword Reset Request\n\nWe received a request to reset your Toolnova password.\n\nPlease reset your password using the following link:\n${resetUrl}\n\nThis link expires in 60 minutes.\n\nIf you did not request this, you can safely ignore this email.\n`;
+  const textContent = `Toolino\n\nPassword Reset Request\n\nWe received a request to reset your Toolino password.\n\nPlease reset your password using the following link:\n${resetUrl}\n\nThis link expires in 60 minutes.\n\nIf you did not request this, you can safely ignore this email.\n`;
 
   const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -66,16 +66,16 @@ export async function sendPasswordResetEmail({ to, resetToken }: SendPasswordRes
 </head>
 <body>
   <div class="container">
-    <div class="brand">Toolnova</div>
+    <div class="brand">Toolino</div>
     <div class="title">Password Reset Request</div>
-    <p>We received a request to reset your Toolnova password.</p>
+    <p>We received a request to reset your Toolino password.</p>
     <div class="btn-container">
       <a href="${resetUrl}" class="btn" target="_blank" rel="noopener noreferrer">Reset Password</a>
     </div>
     <p>This link expires in 60 minutes.</p>
     <p>If you did not request this, you can safely ignore this email.</p>
     <div class="footer">
-      This is an automated security message from Toolnova (${SITE_URL}).
+      This is an automated security message from Toolino (${SITE_URL}).
     </div>
   </div>
 </body>
@@ -102,7 +102,7 @@ export async function sendPasswordResetEmail({ to, resetToken }: SendPasswordRes
     // log a clear warning without throwing, and allow the flow to proceed safely.
     if (process.env.NODE_ENV === 'development') {
       console.warn(
-        `[Toolnova Email] SMTP credentials not configured. In development, reset link would be: ${resetUrl}`
+        `[Toolino Email] SMTP credentials not configured. In development, reset link would be: ${resetUrl}`
       );
     }
     return true;

@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { SignUpForm } from '@/components/auth/SignUpForm';
 
 export const metadata: Metadata = {
-  title: 'Sign Up - Toolnova',
-  description: 'Create your Toolnova account.',
+  title: 'Sign Up - Toolino',
+  description: 'Create your Toolino account.',
 };
 
 export default function SignUpPage() {

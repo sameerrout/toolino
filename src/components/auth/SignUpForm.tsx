@@ -112,7 +112,7 @@ export function SignUpForm() {
               Create an account
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-slate-500">
-              Sign up to get full access to Toolnova
+              Sign up to get full access to Toolino
             </p>
           </div>
 

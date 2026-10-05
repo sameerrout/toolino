@@ -63,7 +63,7 @@ export const jsonFormatterContent: ToolContent = {
     heading: 'Your developer payloads never leave your computer',
     paragraphs: [
       'Modern web developers routinely handle production tokens, test credentials, and customer records. Many online JSON formatters quietly transmit these payloads to remote servers or proxy services.',
-      'Toolnova processes your JSON purely within your local browser context using native JavaScript JSON parsers. No HTTP requests are sent when you paste, validate, format, or download your data.',
+      'Toolino processes your JSON purely within your local browser context using native JavaScript JSON parsers. No HTTP requests are sent when you paste, validate, format, or download your data.',
       'You can verify this at any time by opening your browser developer tools Network tab: zero network activity occurs while formatting your code.',
     ],
   },

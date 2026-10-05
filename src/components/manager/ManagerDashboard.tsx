@@ -154,7 +154,7 @@ export function ManagerDashboard() {
           <div>
             <h1 className="text-xl font-bold text-slate-900">Access Denied</h1>
             <p className="mt-2 text-xs text-slate-500">
-              This area is restricted to authorized Toolnova administrators. Please log in with an authorized account.
+              This area is restricted to authorized Toolino administrators. Please log in with an authorized account.
             </p>
           </div>
           <div className="flex items-center justify-center gap-3 pt-2">
@@ -199,7 +199,7 @@ export function ManagerDashboard() {
             <span className="text-xs font-medium text-slate-700">Management</span>
           </div>
           <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            Toolnova Manager Dashboard
+            Toolino Manager Dashboard
           </h1>
           <p className="mt-1 text-sm text-slate-600 flex items-center gap-2">
             <span>Status:</span>

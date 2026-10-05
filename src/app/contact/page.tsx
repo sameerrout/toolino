@@ -13,9 +13,9 @@ import { BRAND } from '@/lib/site';
 export const metadata: Metadata = buildMetadata({
   title: `Contact ${BRAND.name} — Support, Bug Reports and Enquiries`,
   description:
-    'Reach the Toolnova team about a tool, a bug report, a privacy request or a business enquiry. A real email address and a working contact form, answered within two working days.',
+    'Reach the Toolino team about a tool, a bug report, a privacy request or a business enquiry. A real email address and a working contact form, answered within two working days.',
   path: '/contact/',
-  keywords: ['contact toolnova', 'report a bug', 'support', 'privacy request'],
+  keywords: ['contact toolino', 'report a bug', 'support', 'privacy request'],
 });
 
 const breadcrumbs = [{ name: 'Home', path: '/' }, { name: 'Contact' }];

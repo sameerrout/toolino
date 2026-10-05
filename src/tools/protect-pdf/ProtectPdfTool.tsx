@@ -77,8 +77,8 @@ export function ProtectPdfTool() {
       const doc = await loadPdf(buffer, file.name);
 
       reporter.beginStage('Normalizing PDF structure', 0.4);
-      doc.setProducer('Toolnova Security Engine');
-      doc.setCreator('Toolnova');
+      doc.setProducer('Toolino Security Engine');
+      doc.setCreator('Toolino');
       const normalizedBytes = await doc.save();
 
       reporter.beginStage(`Applying ${algorithm} encryption in browser`, 0.85);
