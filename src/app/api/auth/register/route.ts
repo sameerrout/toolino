@@ -59,9 +59,16 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('[AUTH_REGISTER_ERROR]:', error);
+    const message = error instanceof Error ? error.message : '';
+    let userMessage = 'Registration failed. Please try again.';
+    if (message.includes('database') || message.includes('EACCES') || message.includes('EROFS')) {
+      userMessage = 'Unable to connect to the database. Please try again later.';
+    } else if (message.includes('SESSION_SECRET') || message.includes('secret')) {
+      userMessage = 'Authentication service is temporarily unavailable. Please try again.';
+    }
     return NextResponse.json(
-      { error: 'An unexpected error occurred during registration.' },
+      { error: userMessage },
       { status: 500 }
     );
   }

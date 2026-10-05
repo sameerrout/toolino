@@ -38,19 +38,20 @@ const INITIAL_DB: DatabaseSchema = {
   events: [],
 };
 
-// Global in-memory cache for fast lookup and serverless resilience
-let memoryDb: DatabaseSchema | null = null;
+// Global in-memory cache on globalThis for fast lookup and serverless resilience across hot-reloads
+const globalForDb = globalThis as unknown as {
+  __toolino_memory_db__?: DatabaseSchema;
+  prisma?: PrismaClient;
+};
 
 // Global Prisma instance for connection reuse across hot-reloads
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-
 export const prisma =
-  globalForPrisma.prisma ||
+  globalForDb.prisma ||
   new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== 'production') globalForDb.prisma = prisma;
 
 function getDbFilePath(): string {
   // Use /tmp on Vercel or AWS Lambda where the project root is read-only
@@ -91,7 +92,7 @@ export function getDb(): DatabaseSchema {
           if (!Array.isArray(parsed.users)) parsed.users = [];
           if (!parsed.toolUsage || typeof parsed.toolUsage !== 'object') parsed.toolUsage = {};
           if (!Array.isArray(parsed.events)) parsed.events = [];
-          memoryDb = parsed;
+          globalForDb.__toolino_memory_db__ = parsed;
           return parsed;
         }
       }
@@ -100,14 +101,14 @@ export function getDb(): DatabaseSchema {
     console.error('Failed to read database store:', error);
   }
 
-  if (!memoryDb) {
-    memoryDb = { users: [], toolUsage: {}, events: [] };
+  if (!globalForDb.__toolino_memory_db__) {
+    globalForDb.__toolino_memory_db__ = { users: [], toolUsage: {}, events: [] };
   }
-  return memoryDb;
+  return globalForDb.__toolino_memory_db__;
 }
 
 export function saveDb(data: DatabaseSchema): void {
-  memoryDb = data;
+  globalForDb.__toolino_memory_db__ = data;
   try {
     const filePath = ensureDbFile();
     const tempFile = `${filePath}.tmp`;
