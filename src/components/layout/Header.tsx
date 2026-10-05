@@ -3,23 +3,48 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronDown, Menu, X, ShieldCheck } from 'lucide-react';
+import { ChevronDown, Menu, X } from 'lucide-react';
 import { Logo } from './Logo';
 import { CATEGORY_META, CATEGORY_ORDER } from '@/data/categories';
 import { getToolsByCategory } from '@/data/toolRegistry';
 import { toolPath } from '@/lib/tools';
 
 /**
- * Toolino Header Navigation.
+ * Toolnova Header Navigation.
  *
- * Restores the original Toolino clean white navbar with blue-600 accents,
+ * Official Toolnova clean white navbar with blue-600 accents,
  * clear typography, category dropdown, and mobile navigation drawer.
  */
 export function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
+  const [user, setUser] = useState<{ email: string; name: string; isManager: boolean; picture?: string } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch current user authentication status
+  useEffect(() => {
+    fetch('/api/auth/me/')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.authenticated && data?.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      })
+      .catch(() => setUser(null));
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout/', { method: 'POST' });
+      setUser(null);
+      window.location.href = '/';
+    } catch {
+      window.location.reload();
+    }
+  };
 
   // Close menus on route change
   useEffect(() => {
@@ -113,13 +138,6 @@ export function Header() {
           </Link>
 
           <Link
-            href="/tools/pin-code-lookup/"
-            className={`transition ${pathname.includes('pin-code-lookup') ? 'text-blue-600 font-semibold' : 'hover:text-blue-600'}`}
-          >
-            PIN Code Lookup
-          </Link>
-
-          <Link
             href="/blog/"
             className={`transition ${pathname.startsWith('/blog') ? 'text-blue-600 font-semibold' : 'hover:text-blue-600'}`}
           >
@@ -134,18 +152,45 @@ export function Header() {
           </Link>
         </nav>
 
-        {/* Right Action / Privacy Badge */}
+        {/* Right Action / Auth Controls */}
         <div className="hidden lg:flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-100">
-            <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 text-blue-600" />
-            100% Client-Side
-          </span>
-          <Link
-            href="/tools/"
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-xs font-semibold shadow-xs"
-          >
-            Explore Tools
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-3">
+              {user.isManager && (
+                <Link
+                  href="/manager/"
+                  className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-semibold border border-amber-200 transition shadow-2xs"
+                >
+                  Manager
+                </Link>
+              )}
+              <span className="text-xs font-medium text-slate-700 truncate max-w-[140px]">
+                {user.name}
+              </span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-xs font-medium text-slate-500 hover:text-red-600 transition"
+              >
+                Log Out
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link
+                href="/signup/"
+                className="text-xs font-semibold text-slate-700 hover:text-blue-600 transition px-2 py-1.5"
+              >
+                Sign Up
+              </Link>
+              <Link
+                href="/signin/"
+                className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-xs font-semibold shadow-xs"
+              >
+                Sign In
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile menu trigger */}
@@ -186,13 +231,6 @@ export function Header() {
             ZIP Converter
           </Link>
           <Link
-            href="/tools/pin-code-lookup/"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-slate-700 hover:text-blue-600 py-1"
-          >
-            PIN Code Lookup
-          </Link>
-          <Link
             href="/blog/"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-sm font-medium text-slate-700 hover:text-blue-600 py-1"
@@ -213,6 +251,48 @@ export function Header() {
           >
             Contact
           </Link>
+
+          {/* Auth options in mobile drawer */}
+          {user ? (
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <div className="text-xs text-slate-500 font-medium px-1">
+                Signed in as <strong className="text-slate-800">{user.email}</strong>
+              </div>
+              {user.isManager && (
+                <Link
+                  href="/manager/"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-sm font-semibold text-amber-700 hover:text-amber-800 py-1"
+                >
+                  Manager
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="block text-sm font-medium text-red-600 hover:text-red-700 py-1"
+              >
+                Log Out
+              </button>
+            </div>
+          ) : (
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <Link
+                href="/signup/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-sm font-medium text-slate-700 hover:text-blue-600 py-1"
+              >
+                Sign Up
+              </Link>
+              <Link
+                href="/signin/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-sm font-semibold text-blue-600 hover:text-blue-700 py-1"
+              >
+                Sign In
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </header>

@@ -16,7 +16,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Check, Copy, Mail, Send } from 'lucide-react';
 
-import { BRAND } from '@/lib/site';
+import { BRAND, SITE_URL } from '@/lib/site';
 
 type Topic = 'bug' | 'question' | 'feedback' | 'business' | 'legal' | 'other';
 
@@ -71,7 +71,7 @@ export function ContactForm() {
         message.trim(),
         '',
         '---',
-        'Sent from the contact form at toolnova.com',
+        `Sent from the contact form at ${new URL(SITE_URL).host}`,
       ].join('\n'),
     [name, email, topic, message]
   );

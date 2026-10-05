@@ -326,26 +326,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     privacyNote:
       'Pages are rendered with pdf.js on your device, one page at a time, so even long documents stay within memory.',
   },
-  {
-    slug: 'edit-pdf',
-    name: 'Edit PDF',
-    category: 'pdf-tools',
-    kind: 'pdf',
-    weight: 'heavy',
-    metaTitle: 'Edit PDF Online Free - Add Text and Highlights Locally',
-    metaDescription:
-      'Add text boxes, highlights, rectangles and freehand marks to a PDF, then export a flattened copy. Works offline in your browser with no upload.',
-    tagline: 'Annotate a PDF with text, highlights and shapes, then export it.',
-    accept: PDF_ACCEPT,
-    acceptAttribute: 'application/pdf,.pdf',
-    outputFormats: ['PDF'],
-    related: ['organize-pdf', 'watermark-pdf', 'pdf-page-numbers', 'merge-pdf'],
-    legacyPaths: ['/pdf-editor', '/annotate-pdf', '/write-on-pdf'],
-    keyword: 'edit pdf',
-    secondaryKeywords: ['annotate pdf', 'add text to pdf', 'pdf editor online free'],
-    privacyNote:
-      'Your edits are drawn on a local canvas and exported by PDF-LIB. The document and your annotations stay on your device.',
-  },
 
   // =========================================================================
   // Image tools
@@ -547,27 +527,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     secondaryKeywords: ['free qr code', 'wifi qr code', 'vcard qr code', 'qr code png svg'],
     privacyNote:
       'QR codes are generated locally with no account and no tracking redirect. The codes are static, so they keep working forever and never expire.',
-  },
-  {
-    slug: 'pin-code-lookup',
-    name: 'PIN Code Lookup',
-    category: 'text-tools',
-    kind: 'text',
-    weight: 'light',
-    metaTitle: 'PIN Code Lookup - Find India Postal Codes Online Free',
-    metaDescription:
-      'Search Indian postal PIN codes by State, District, Sub-District and Village. Instant, accurate postal directory lookup with one-click copy. No signup required.',
-    tagline: 'Find exact 6-digit India postal PIN codes by state, district and village.',
-    accept: [],
-    acceptAttribute: '',
-    outputFormats: ['PIN'],
-    featured: true,
-    related: ['qr-code-generator', 'word-counter', 'json-formatter', 'age-calculator'],
-    legacyPaths: ['/pin-code-lookup', '/pincode-lookup', '/pincode-finder', '/india-pincode'],
-    keyword: 'pin code lookup',
-    secondaryKeywords: ['india pincode finder', 'postal code search', 'village pincode lookup'],
-    privacyNote:
-      'Location lookups run entirely in your browser using a local database. No search terms or locations are ever sent to any server.',
   },
 
   // =========================================================================

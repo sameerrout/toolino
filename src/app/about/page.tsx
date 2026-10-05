@@ -84,6 +84,11 @@ export default function AboutPage() {
         </div>
 
         <div className="prose-toolnova mt-10 max-w-3xl">
+          <h2>Creators</h2>
+          <p>
+            {BRAND.name} was created by <strong>Sameer Rout</strong> and <strong>Sampangi Sony</strong>. Built with a focus on speed, accessibility, and complete privacy, the platform provides everyday online utilities that execute 100% inside your browser so your files and sensitive data never leave your device.
+          </p>
+
           <h2>Why this site exists</h2>
           <p>
             Searching for something as ordinary as &ldquo;merge two PDFs&rdquo; returns a wall of

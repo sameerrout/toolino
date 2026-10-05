@@ -8,7 +8,7 @@ import { TOOL_CONTENT } from '@/data/toolContent';
 import { getTool } from '@/data/toolRegistry';
 import { CATEGORY_META, CATEGORY_ORDER } from '@/data/categories';
 import { isCategorySlug, isToolSlug, TOOL_SLUGS } from '@/lib/tools';
-import { BRAND } from '@/lib/site';
+import { BRAND, SITE_URL } from '@/lib/site';
 
 /**
  * `/tools/<slug>/`
@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
     return {
       title: meta.metaTitle,
       description: meta.metaDescription,
-      alternates: { canonical: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://toolnova.com'}/tools/${slug}/` },
+      alternates: { canonical: `${SITE_URL}/tools/${slug}/` },
       openGraph: {
         title: meta.metaTitle,
         description: meta.metaDescription,

@@ -30,23 +30,4 @@ describe('Text Tools & String Analysis', () => {
     expect(minified).toBe('{"name":"Toolnova","tools":27}');
     expect(JSON.stringify(parsed, null, 2)).toContain('  "name": "Toolnova"');
   });
-
-  it('validates India PIN Code hierarchy dataset and lookups', async () => {
-    const { INDIA_PINCODE_DATA } = await import('@/tools/pin-code-lookup/pincodeData');
-    expect(INDIA_PINCODE_DATA.length).toBeGreaterThan(5);
-
-    const mh = INDIA_PINCODE_DATA.find((s) => s.name === 'Maharashtra');
-    expect(mh).toBeDefined();
-
-    const mumbai = mh?.districts.find((d) => d.name.includes('Mumbai'));
-    expect(mumbai).toBeDefined();
-
-    const southMumbai = mumbai?.subDistricts.find((sd) => sd.name === 'Mumbai South');
-    expect(southMumbai).toBeDefined();
-
-    const fort = southMumbai?.villages.find((v) => v.name.includes('Fort'));
-    expect(fort).toBeDefined();
-    expect(fort?.pincode).toBe('400001');
-    expect(fort?.pincode).toMatch(/^\d{6}$/);
-  });
 });

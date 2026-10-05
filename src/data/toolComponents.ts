@@ -15,7 +15,6 @@ import { OrganizePdfTool } from '@/tools/organize-pdf/OrganizePdfTool';
 import { ProtectPdfTool } from '@/tools/protect-pdf/ProtectPdfTool';
 import { ImageToPdfTool } from '@/tools/image-to-pdf/ImageToPdfTool';
 import { PdfToImageTool } from '@/tools/pdf-to-image/PdfToImageTool';
-import { EditPdfTool } from '@/tools/edit-pdf/EditPdfTool';
 import { CompressImageTool } from '@/tools/compress-image/CompressImageTool';
 import { ResizeImageTool } from '@/tools/resize-image/ResizeImageTool';
 import { ConvertImageTool } from '@/tools/convert-image/ConvertImageTool';
@@ -25,7 +24,6 @@ import { PassportPhotoTool } from '@/tools/passport-photo/PassportPhotoTool';
 import { WordCounterTool } from '@/tools/word-counter/WordCounterTool';
 import { JsonFormatterTool } from '@/tools/json-formatter/JsonFormatterTool';
 import { QrCodeGeneratorTool } from '@/tools/qr-code-generator/QrCodeGeneratorTool';
-import { PinCodeLookupTool } from '@/tools/pin-code-lookup/PinCodeLookupTool';
 import { AgeCalculatorTool } from '@/tools/age-calculator/AgeCalculatorTool';
 import { PercentageCalculatorTool } from '@/tools/percentage-calculator/PercentageCalculatorTool';
 import { DiscountCalculatorTool } from '@/tools/discount-calculator/DiscountCalculatorTool';
@@ -52,7 +50,6 @@ export const TOOL_COMPONENTS: Record<ToolSlug, ComponentType> = {
   'protect-pdf': ProtectPdfTool,
   'image-to-pdf': ImageToPdfTool,
   'pdf-to-image': PdfToImageTool,
-  'edit-pdf': EditPdfTool,
   'compress-image': CompressImageTool,
   'resize-image': ResizeImageTool,
   'convert-image': ConvertImageTool,
@@ -62,7 +59,6 @@ export const TOOL_COMPONENTS: Record<ToolSlug, ComponentType> = {
   'word-counter': WordCounterTool,
   'json-formatter': JsonFormatterTool,
   'qr-code-generator': QrCodeGeneratorTool,
-  'pin-code-lookup': PinCodeLookupTool,
   'age-calculator': AgeCalculatorTool,
   'percentage-calculator': PercentageCalculatorTool,
   'discount-calculator': DiscountCalculatorTool,

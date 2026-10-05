@@ -20,7 +20,6 @@ export const TOOL_SLUGS = [
   'protect-pdf',
   'image-to-pdf',
   'pdf-to-image',
-  'edit-pdf',
   // ---- Image tools ------------------------------------------------------
   'compress-image',
   'resize-image',
@@ -32,7 +31,6 @@ export const TOOL_SLUGS = [
   'word-counter',
   'json-formatter',
   'qr-code-generator',
-  'pin-code-lookup',
   // ---- Calculators ------------------------------------------------------
   'age-calculator',
   'percentage-calculator',

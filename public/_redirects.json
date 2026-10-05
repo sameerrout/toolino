@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T20:14:42.148Z",
+  "generatedAt": "2026-10-05T18:36:11.805Z",
   "redirects": [
     {
       "from": "/files-to-zip",
@@ -212,21 +212,6 @@
       "status": 301
     },
     {
-      "from": "/pdf-editor",
-      "to": "/tools/edit-pdf/",
-      "status": 301
-    },
-    {
-      "from": "/annotate-pdf",
-      "to": "/tools/edit-pdf/",
-      "status": 301
-    },
-    {
-      "from": "/write-on-pdf",
-      "to": "/tools/edit-pdf/",
-      "status": 301
-    },
-    {
       "from": "/image-compressor",
       "to": "/tools/compress-image/",
       "status": 301
@@ -402,26 +387,6 @@
       "status": 301
     },
     {
-      "from": "/pin-code-lookup",
-      "to": "/tools/pin-code-lookup/",
-      "status": 301
-    },
-    {
-      "from": "/pincode-lookup",
-      "to": "/tools/pin-code-lookup/",
-      "status": 301
-    },
-    {
-      "from": "/pincode-finder",
-      "to": "/tools/pin-code-lookup/",
-      "status": 301
-    },
-    {
-      "from": "/india-pincode",
-      "to": "/tools/pin-code-lookup/",
-      "status": 301
-    },
-    {
       "from": "/age-calculator",
       "to": "/tools/age-calculator/",
       "status": 301
@@ -542,27 +507,52 @@
       "status": 301
     },
     {
-      "from": "/login",
-      "to": "/",
+      "from": "/edit-pdf",
+      "to": "/tools/pdf-tools/",
       "status": 301
     },
     {
-      "from": "/signup",
-      "to": "/",
+      "from": "/pdf-editor",
+      "to": "/tools/pdf-tools/",
+      "status": 301
+    },
+    {
+      "from": "/editor-pdf",
+      "to": "/tools/pdf-tools/",
+      "status": 301
+    },
+    {
+      "from": "/tools/edit-pdf",
+      "to": "/tools/pdf-tools/",
+      "status": 301
+    },
+    {
+      "from": "/pin-code-lookup",
+      "to": "/tools/text-tools/",
+      "status": 301
+    },
+    {
+      "from": "/pincode-lookup",
+      "to": "/tools/text-tools/",
+      "status": 301
+    },
+    {
+      "from": "/pincode-finder",
+      "to": "/tools/text-tools/",
+      "status": 301
+    },
+    {
+      "from": "/india-pincode",
+      "to": "/tools/text-tools/",
+      "status": 301
+    },
+    {
+      "from": "/tools/pin-code-lookup",
+      "to": "/tools/text-tools/",
       "status": 301
     },
     {
       "from": "/dashboard",
-      "to": "/",
-      "status": 301
-    },
-    {
-      "from": "/admin",
-      "to": "/",
-      "status": 301
-    },
-    {
-      "from": "/manager",
       "to": "/",
       "status": 301
     },

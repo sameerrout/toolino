@@ -11,14 +11,14 @@ import { websiteSchema, organizationSchema } from '@/lib/seo/schema';
 import { BRAND } from '@/lib/site';
 
 /**
- * Toolino Homepage (Server Component).
+ * Toolnova Homepage (Server Component).
  *
- * Restores the original Toolino visual design:
+ * Official Toolnova visual design:
  * - Animated wave hero section with blue gradient
- * - Signature Toolino search bar
+ * - Signature Toolnova search bar
  * - Original card styling with emoji badges, hover lift, and blue accents
  * - Full categorized tools directory
- * - "Why Choose Toolino" value propositions
+ * - "Why Choose Toolnova" value propositions
  *
  * Kept as a Server Component to ensure zero unnecessary JavaScript overhead
  * and lightning-fast LCP (< 1.5s).
@@ -30,17 +30,16 @@ export const metadata: Metadata = buildMetadata({
   path: '/',
   keywords: [
     'free online tools',
-    'Toolino',
+    'Toolnova',
     'browser based tools',
     'create zip online',
-    'pin code lookup',
     'merge pdf free',
     'compress image',
     'client side pdf tools',
   ],
 });
 
-// Signature Toolino tool icon mapping
+// Signature Toolnova tool icon mapping
 const TOOL_ICONS: Record<string, string> = {
   'create-zip': '📦',
   'extract-zip': '📂',
@@ -51,7 +50,6 @@ const TOOL_ICONS: Record<string, string> = {
   'pdf-page-numbers': '🔢',
   'organize-pdf': '📋',
   'compress-pdf': '🗜️',
-  'edit-pdf': '✏️',
   'pdf-to-image': '📸',
   'image-to-pdf': '🖼️',
   'protect-pdf': '🔒',
@@ -64,7 +62,6 @@ const TOOL_ICONS: Record<string, string> = {
   'word-counter': '📊',
   'json-formatter': '⚡',
   'qr-code-generator': '🔳',
-  'pin-code-lookup': '📍',
   'age-calculator': '🎂',
   'percentage-calculator': '％',
   'discount-calculator': '🏷️',
@@ -101,7 +98,7 @@ export default function HomePage() {
           </h1>
 
           <p className="mb-10 text-base sm:text-lg text-blue-100 max-w-2xl mx-auto leading-relaxed">
-            Choose from browser-based tools and fast client-side utilities. Toolino runs everything
+            Choose from browser-based tools and fast client-side utilities. Toolnova runs everything
             privately inside your browser without uploading files to servers.
           </p>
 
@@ -216,12 +213,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Why Choose Toolino Section */}
+      {/* Why Choose Toolnova Section */}
       <section className="py-16 bg-white border-t border-slate-200/80">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              Why Users Choose Toolino
+              Why Users Choose Toolnova
             </h2>
             <p className="text-slate-600 text-sm mt-2">
               Engineered with a client-first philosophy so your sensitive documents stay private.

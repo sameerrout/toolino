@@ -15,6 +15,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useAdFreeZone } from '@/components/ads/AdSlot';
+import { SITE_URL } from '@/lib/site';
 
 type QrType = 'url' | 'text' | 'wifi' | 'email' | 'phone' | 'sms' | 'vcard';
 
@@ -22,7 +23,7 @@ export function QrCodeGeneratorTool() {
   const [qrType, setQrType] = useState<QrType>('url');
 
   // Input states
-  const [url, setUrl] = useState('https://toolnova.com');
+  const [url, setUrl] = useState(SITE_URL);
   const [plainText, setPlainText] = useState('Hello from Toolnova!');
   const [ssid, setSsid] = useState('');
   const [wifiPass, setWifiPass] = useState('');
@@ -54,7 +55,7 @@ export function QrCodeGeneratorTool() {
   const payload = (() => {
     switch (qrType) {
       case 'url':
-        return url.trim() || 'https://toolnova.com';
+        return url.trim() || SITE_URL;
       case 'text':
         return plainText || ' ';
       case 'wifi':
@@ -68,7 +69,7 @@ export function QrCodeGeneratorTool() {
       case 'vcard':
         return `BEGIN:VCARD\nVERSION:3.0\nN:${vcardName}\nFN:${vcardName}\nORG:${vcardOrg}\nTEL:${vcardPhone}\nEMAIL:${vcardEmail}\nEND:VCARD`;
       default:
-        return 'https://toolnova.com';
+        return SITE_URL;
     }
   })();
 

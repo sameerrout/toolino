@@ -8,6 +8,7 @@ import { JsonLd } from '@/components/seo/JsonLd';
 import { AdSlot } from '@/components/ads/AdSlot';
 import { ToolCard } from '@/components/common/ToolCard';
 import { ToolContentSections } from '@/components/tools/ToolContentSections';
+import { TrackToolUsage } from '@/components/tools/TrackToolUsage';
 
 import { buildMetadata } from '@/lib/seo/metadata';
 import {
@@ -59,6 +60,7 @@ export function ToolPage({
 
   return (
     <>
+      <TrackToolUsage slug={slug} />
       <JsonLd
         nodes={[
           webPageSchema({

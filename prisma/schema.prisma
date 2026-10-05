@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String          @id
+  email             String          @unique
+  name              String
+  picture           String?
+  authProvider      String          @default("email")
+  passwordHash      String?
+  role              String          @default("user")
+  createdAt         DateTime        @default(now())
+  lastLoginAt       DateTime        @default(now())
+  resetTokenHash    String?
+  resetTokenExpires DateTime?
+  events            ActivityEvent[]
+
+  @@map("users")
+}
+
+model ToolUsage {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("tool_usages")
+}
+
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  type      String
+  email     String?
+  toolSlug  String?
+  user      User?    @relation(fields: [email], references: [email], onDelete: Cascade)
+
+  @@index([timestamp])
+  @@index([email])
+  @@map("activity_events")
+}

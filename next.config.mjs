@@ -1,21 +1,17 @@
 /**
  * Toolnova - Next.js configuration
  *
- * Deployment target: fully static export (`out/`) hosted on S3 + CloudFront.
- * There is deliberately NO Node.js server runtime: no API routes, no route
- * handlers, no server actions, no `headers()`/`rewrites()` (those are not
- * supported by `output: 'export'`). Security headers and cache policies live in
- * the CloudFront Response Headers Policy documented in
- * `deploy/cloudfront/README.md`.
+ * Deployment target: Next.js Node.js server runtime for AWS deployment (ECS, App Runner, EC2, or Docker).
+ * Fully supports dynamic server API routes (/api/auth/*, /api/manager/*, /api/analytics/*)
+ * along with client-side privacy-first web tools.
  */
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ---- Static export (S3 + CloudFront) -------------------------------------
-  output: 'export',
+  // ---- Server & Static Runtime ---------------------------------------------
   trailingSlash: true,
   images: {
-    // Required by `output: 'export'`: no on-demand image optimization server.
+    // Static and client-optimized image handling
     unoptimized: true,
     formats: ['image/webp'],
   },
@@ -94,9 +90,6 @@ const nextConfig = {
       { source: '/emi-calculator', destination: '/tools/emi-calculator/', permanent: true },
       { source: '/discount-calculator', destination: '/tools/discount-calculator/', permanent: true },
       { source: '/gst-calculator', destination: '/tools/gst-calculator/', permanent: true },
-      { source: '/edit-pdf', destination: '/tools/edit-pdf/', permanent: true },
-      { source: '/pdf-editor', destination: '/tools/edit-pdf/', permanent: true },
-      { source: '/editor-pdf', destination: '/tools/edit-pdf/', permanent: true },
       { source: '/pdf-compressor', destination: '/tools/compress-pdf/', permanent: true },
       { source: '/compress-pdf', destination: '/tools/compress-pdf/', permanent: true },
       { source: '/pdf-merger', destination: '/tools/merge-pdf/', permanent: true },
@@ -121,25 +114,29 @@ const nextConfig = {
       { source: '/file-tools', destination: '/tools/file-tools/', permanent: true },
       { source: '/text-tools', destination: '/tools/text-tools/', permanent: true },
 
-      // --- removed tools -------------------------------------------------
-      // PDF Summarizer was deleted (server-side NLP). No browser-equivalent
-      // replacement is offered, so these send visitors to the PDF hub.
+      // --- removed tools (redirected to their category hubs) ----------------
+      { source: '/edit-pdf', destination: '/tools/pdf-tools/', permanent: true },
+      { source: '/pdf-editor', destination: '/tools/pdf-tools/', permanent: true },
+      { source: '/editor-pdf', destination: '/tools/pdf-tools/', permanent: true },
+      { source: '/tools/edit-pdf', destination: '/tools/pdf-tools/', permanent: true },
+      { source: '/pin-code-lookup', destination: '/tools/text-tools/', permanent: true },
+      { source: '/pincode-lookup', destination: '/tools/text-tools/', permanent: true },
+      { source: '/pincode-finder', destination: '/tools/text-tools/', permanent: true },
+      { source: '/india-pincode', destination: '/tools/text-tools/', permanent: true },
+      { source: '/tools/pin-code-lookup', destination: '/tools/text-tools/', permanent: true },
+
+      // PDF Summarizer was deleted (server-side NLP).
       { source: '/pdf-summarizer', destination: '/tools/pdf-tools/', permanent: true },
       { source: '/pdf-analyser', destination: '/tools/pdf-tools/', permanent: true },
       { source: '/pdf-analyzer', destination: '/tools/pdf-tools/', permanent: true },
       { source: '/summarize-pdf', destination: '/tools/pdf-tools/', permanent: true },
-      // PDF to PowerPoint required a Python/LibreOffice worker and could not be
-      // reproduced faithfully in the browser, so it was removed.
+      // PDF to PowerPoint was removed.
       { source: '/pdf-to-powerpoint', destination: '/tools/pdf-tools/', permanent: true },
       { source: '/pdf-to-pptx', destination: '/tools/pdf-tools/', permanent: true },
       { source: '/pdf2pptx', destination: '/tools/pdf-tools/', permanent: true },
 
-      // --- removed account / dashboard areas (no user accounts any more) ---
-      { source: '/login', destination: '/', permanent: true },
-      { source: '/signup', destination: '/', permanent: true },
+      // Legacy unused paths
       { source: '/dashboard', destination: '/', permanent: true },
-      { source: '/admin', destination: '/', permanent: true },
-      { source: '/manager', destination: '/', permanent: true },
       { source: '/download', destination: '/', permanent: true },
     ];
   },
