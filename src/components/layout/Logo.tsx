@@ -28,7 +28,7 @@ export function Logo({
       />
       {showWordmark && (
         <span className="text-2xl font-extrabold tracking-tight text-slate-900 select-none">
-          Tool<span className="text-blue-600">ino</span>
+          Toolino
         </span>
       )}
     </span>

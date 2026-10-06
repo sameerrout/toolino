@@ -98,8 +98,8 @@ export default function HomePage() {
           </h1>
 
           <p className="mb-10 text-base sm:text-lg text-blue-100 max-w-2xl mx-auto leading-relaxed">
-            Choose from browser-based tools and fast client-side utilities. Toolino runs everything
-            privately inside your browser without uploading files to servers.
+            Choose from browser-based tools and fast client-side utilities. Your files are processed
+            locally in your browser, so they do not need to be uploaded to our servers.
           </p>
 
           {/* Search bar */}
@@ -232,8 +232,8 @@ export default function HomePage() {
               </div>
               <h3 className="font-bold text-base text-slate-900">Zero Server File Uploads</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                All image compression, PDF operations, and conversions run locally inside your
-                browser. Files never reach remote servers. Practical limits depend on your device memory.
+                Your files are processed locally in your browser, so they do not need to be uploaded to
+                our servers. Practical limits depend on your browser and device memory.
               </p>
             </div>
 
@@ -241,7 +241,7 @@ export default function HomePage() {
               <div className="inline-flex p-3 rounded-2xl bg-blue-100 text-blue-600">
                 <Zap className="h-6 w-6" />
               </div>
-              <h3 className="font-bold text-base text-slate-900">Ultra-Fast Execution</h3>
+              <h3 className="font-bold text-base text-slate-900">Fast Local Processing</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Files are processed directly on your device, avoiding upload and download delays.
               </p>
