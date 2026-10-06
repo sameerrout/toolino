@@ -47,6 +47,8 @@ export async function GET() {
   toolList.sort((a: ToolItem, b: ToolItem) => b.count - a.count);
 
   const totalToolUses = Object.values(db.toolUsage).reduce((acc: number, curr: number) => acc + curr, 0);
+  const messages = Array.isArray(db.contactMessages) ? db.contactMessages : [];
+  const unreadMessages = messages.filter((m) => m.status === 'unread').length;
 
   return NextResponse.json({
     totalUsers: db.users.length,
@@ -62,6 +64,8 @@ export async function GET() {
     totalToolUses,
     toolUsage: toolList,
     recentEvents: db.events.slice(0, 50),
+    totalMessages: messages.length,
+    unreadMessages,
     authenticatedAs: session.email,
   });
 }

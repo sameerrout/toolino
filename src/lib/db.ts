@@ -26,16 +26,31 @@ export interface ActivityEvent {
   toolSlug?: string;
 }
 
+export type ContactMessageStatus = 'unread' | 'read' | 'replied' | 'resolved';
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  category: string;
+  message: string;
+  status: ContactMessageStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DatabaseSchema {
   users: UserRecord[];
   toolUsage: Record<string, number>;
   events: ActivityEvent[];
+  contactMessages: ContactMessage[];
 }
 
 const INITIAL_DB: DatabaseSchema = {
   users: [],
   toolUsage: {},
   events: [],
+  contactMessages: [],
 };
 
 // Global in-memory cache on globalThis for fast lookup and serverless resilience across hot-reloads
@@ -92,6 +107,7 @@ export function getDb(): DatabaseSchema {
           if (!Array.isArray(parsed.users)) parsed.users = [];
           if (!parsed.toolUsage || typeof parsed.toolUsage !== 'object') parsed.toolUsage = {};
           if (!Array.isArray(parsed.events)) parsed.events = [];
+          if (!Array.isArray(parsed.contactMessages)) parsed.contactMessages = [];
           globalForDb.__toolino_memory_db__ = parsed;
           return parsed;
         }
@@ -102,7 +118,7 @@ export function getDb(): DatabaseSchema {
   }
 
   if (!globalForDb.__toolino_memory_db__) {
-    globalForDb.__toolino_memory_db__ = { users: [], toolUsage: {}, events: [] };
+    globalForDb.__toolino_memory_db__ = { users: [], toolUsage: {}, events: [], contactMessages: [] };
   }
   return globalForDb.__toolino_memory_db__;
 }
@@ -474,3 +490,99 @@ export function resetPasswordWithToken(
 
   return { success: true };
 }
+
+// ============================================================
+// Contact Messages (Public Submission & Manager Review)
+// ============================================================
+
+export function createContactMessage(data: {
+  name: string;
+  email: string;
+  category: string;
+  message: string;
+}): ContactMessage {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const id = `msg_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+  const newMsg: ContactMessage = {
+    id,
+    name: data.name.trim(),
+    email: data.email.trim().toLowerCase(),
+    category: data.category.trim(),
+    message: data.message.trim(),
+    status: 'unread',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (!Array.isArray(db.contactMessages)) {
+    db.contactMessages = [];
+  }
+
+  // Prepend newest message first
+  db.contactMessages.unshift(newMsg);
+  saveDb(db);
+
+  return newMsg;
+}
+
+export function getContactMessages(): ContactMessage[] {
+  const db = getDb();
+  if (!Array.isArray(db.contactMessages)) {
+    return [];
+  }
+  // Return sorted newest first
+  return [...db.contactMessages].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+
+export function getContactMessageById(id: string): ContactMessage | undefined {
+  const db = getDb();
+  return db.contactMessages?.find((m) => m.id === id);
+}
+
+export function updateContactMessageStatus(
+  id: string,
+  status: ContactMessageStatus
+): { success: boolean; message?: ContactMessage; error?: string } {
+  const validStatuses: ContactMessageStatus[] = ['unread', 'read', 'replied', 'resolved'];
+  if (!validStatuses.includes(status)) {
+    return { success: false, error: 'Invalid status value.' };
+  }
+
+  const db = getDb();
+  if (!Array.isArray(db.contactMessages)) {
+    return { success: false, error: 'Message not found.' };
+  }
+
+  const target = db.contactMessages.find((m) => m.id === id);
+  if (!target) {
+    return { success: false, error: 'Message not found.' };
+  }
+
+  target.status = status;
+  target.updatedAt = new Date().toISOString();
+  saveDb(db);
+
+  return { success: true, message: target };
+}
+
+export function deleteContactMessage(id: string): { success: boolean; error?: string } {
+  const db = getDb();
+  if (!Array.isArray(db.contactMessages)) {
+    return { success: false, error: 'Message not found.' };
+  }
+
+  const index = db.contactMessages.findIndex((m) => m.id === id);
+  if (index === -1) {
+    return { success: false, error: 'Message not found.' };
+  }
+
+  db.contactMessages.splice(index, 1);
+  saveDb(db);
+
+  return { success: true };
+}
+

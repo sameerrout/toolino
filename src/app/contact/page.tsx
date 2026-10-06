@@ -62,7 +62,7 @@ const CONTACT_FAQS = [
   {
     question: 'Is the contact form itself private?',
     answer:
-      'Yes. The form does not submit to a server. It composes a message in your own email application using a mailto link, so the text goes straight from your mail client to our inbox. Nothing is posted to this website at any point.',
+      'Yes. Messages submitted through the contact form are stored securely and accessible only to authorized administrators to review and assist you. We never share or sell your contact details.',
   },
 ];
 
@@ -90,22 +90,8 @@ export default function ContactPage() {
             Contact us
           </h1>
           <p className="mt-4 text-lg text-slate-600">
-            {BRAND.name} is run by a small team, and a real person reads every message.
-            {BRAND.email ? (
-              <>
-                {' '}The fastest route is always email:{' '}
-                <a
-                  href={`mailto:${BRAND.email}`}
-                  className="font-semibold text-brand-700 underline hover:text-brand-800"
-                >
-                  {BRAND.email}
-                </a>.
-              </>
-            ) : (
-              <>
-                {' '}Please use the contact form below to get in touch with bug reports, feature suggestions, or questions.
-              </>
-            )}
+            {BRAND.name} is run by a dedicated team, and a real person reviews every message.
+            Please use the contact form below to submit bug reports, feature suggestions, or questions directly to our team.
           </p>
         </div>
 

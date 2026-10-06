@@ -116,9 +116,13 @@ export function verifySessionToken(token: string | null | undefined): SessionDat
 }
 
 export async function getServerSession(): Promise<SessionData | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  return verifySessionToken(token);
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    return verifySessionToken(token);
+  } catch {
+    return null;
+  }
 }
 
 export async function requireManagerSession(): Promise<SessionData | null> {

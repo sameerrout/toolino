@@ -45,3 +45,19 @@ model ActivityEvent {
   @@index([email])
   @@map("activity_events")
 }
+
+model ContactMessage {
+  id        String   @id
+  name      String
+  email     String
+  category  String
+  message   String
+  status    String   @default("unread")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
