@@ -17,7 +17,7 @@ export const CATEGORY_META: Record<CategorySlug, CategoryMeta> = {
     metaDescription:
       'Create a ZIP from any files or a whole folder, and open existing archives, without uploading anything. Free browser-based file tools that keep your data local.',
     intro:
-      'Zip a folder, pack mixed file types into one archive, or open an archive someone sent you. Everything runs inside your own browser tab, so there is no upload step and no server-side file size limit.',
+      'Zip a folder, pack mixed file types into one archive, or open an archive someone sent you. Everything runs locally inside your own browser tab without server uploads. Practical processing limits depend on your device memory.',
     kind: 'zip',
     icon: 'FolderArchive',
     accent: 'amber',
@@ -30,7 +30,7 @@ export const CATEGORY_META: Record<CategorySlug, CategoryMeta> = {
     metaDescription:
       'Merge, split, compress, rotate, watermark, number, organise and password-protect PDF files in your browser. No upload, no signup, no server processing.',
     intro:
-      'Nine PDF tools that run entirely on your device. Contracts, invoices, medical letters and ID scans stay on your computer, which is why this is the safest place to prepare a PDF you would rather not send to a random website.',
+      'Ten PDF tools that run entirely on your device. Contracts, invoices, medical letters and ID scans stay on your computer, making this a private environment to prepare documents locally.',
     kind: 'pdf',
     icon: 'FileText',
     accent: 'rose',
@@ -67,7 +67,7 @@ export const CATEGORY_META: Record<CategorySlug, CategoryMeta> = {
     navLabel: 'Calculators',
     metaTitle: 'Free Online Calculators - Age, Percentage, EMI, GST, Discount',
     metaDescription:
-      'Work out exact age, percentages, stacked discounts, loan EMIs with a full amortization schedule, and GST with CGST and SGST splits. Free, instant, and private.',
+      'Work out age, percentages, stacked discounts, loan EMIs with a full amortization schedule, and GST with CGST and SGST splits. Free, instant, and private.',
     intro:
       'Five calculators that show the formula behind the answer rather than just the number, so you can check the working yourself. Nothing you type is logged or sent anywhere.',
     kind: 'calculator',

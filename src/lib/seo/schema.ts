@@ -115,6 +115,7 @@ export interface HowToInput {
   name: string;
   description: string;
   steps: HowToStep[];
+  path?: string;
   /** Total time as an ISO 8601 duration, e.g. `PT1M`. */
   totalTime?: string;
   supply?: string[];
@@ -122,6 +123,7 @@ export interface HowToInput {
 }
 
 export function howToSchema(input: HowToInput): JsonLdNode {
+  const basePath = input.path ?? toolPath('create-zip');
   return {
     '@type': 'HowTo',
     name: input.name,
@@ -136,7 +138,7 @@ export function howToSchema(input: HowToInput): JsonLdNode {
       position: index + 1,
       name: step.name,
       text: step.text,
-      url: `${absoluteUrl(toolPath('create-zip'))}#step-${index + 1}`,
+      url: `${absoluteUrl(basePath)}#step-${index + 1}`,
     })),
   };
 }

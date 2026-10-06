@@ -5,7 +5,7 @@ export const gstCalculatorContent: ToolContent = {
   overview: [
     'This online Goods and Services Tax (GST) calculator calculates both inclusive and exclusive GST amounts in seconds. Whether you need to add GST to a base invoice price or extract the net amount and tax portion from a gross total, it handles all standard slabs: 0%, 3%, 5%, 12%, 18%, and 28%, along with custom percentages.',
     'It accurately splits tax amounts into intra-state components (Central GST and State GST, 50/50 split) or inter-state integrated tax (IGST 100%), matching statutory invoicing standards.',
-    'Everything runs client-side in your browser. Accountants, business owners, and freelancers can compute invoices and billing figures without exposing corporate sales numbers to third-party servers.',
+    'Select the applicable GST rate for your product or service. GST rates can vary by HSN/SAC classification and may change over time. Verify the current applicable rate with official GST guidance. This calculator is designed for planning and does not replace professional tax advice.',
   ],
   howTo: {
     heading: 'How to calculate GST (Add or Remove GST)',
@@ -90,7 +90,7 @@ export const gstCalculatorContent: ToolContent = {
     {
       question: 'What items fall under different GST rate slabs?',
       answer:
-        '0% covers basic fresh food; 3% covers precious metals and jewellery; 5% covers household essentials; 12% covers processed food and electronics; 18% is the standard rate for IT services and restaurants; 28% applies to luxury items and automobiles.',
+        'Tax slabs vary according to specific HSN (goods) or SAC (services) codes. In general: 0% applies to essential unbranded foods; 3% covers gold and precious metals; 5% covers basic necessities; 12% covers selected processed foods; 18% covers standard IT and commercial services; and 28% covers luxury goods and automobiles. Always verify your item’s exact code with the latest official GST Council schedules.',
     },
     {
       question: 'How do I calculate GST on discounted products?',

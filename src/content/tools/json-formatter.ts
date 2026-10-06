@@ -38,7 +38,7 @@ export const jsonFormatterContent: ToolContent = {
     intro: 'Engineered for software engineers, QA analysts, DevOps practitioners, and API developers.',
     items: [
       {
-        title: 'Guaranteed token & credential security',
+        title: 'Private client-side token & credential security',
         text: 'Sensitive payloads containing auth tokens, customer records, and internal configurations remain strictly in your browser.',
       },
       {

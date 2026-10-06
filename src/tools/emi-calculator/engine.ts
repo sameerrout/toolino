@@ -172,11 +172,11 @@ export function calculateEmi(params: EmiCalculationParams): EmiCalculationResult
   };
 }
 
-export function formatEmiCurrency(amount: number, symbol = '$'): string {
+export function formatEmiCurrency(amount: number, symbol = '₹', locale = 'en-IN'): string {
   if (isNaN(amount) || !isFinite(amount)) return `${symbol}0`;
   const absAmount = Math.abs(amount);
   const rounded = Math.round(absAmount);
-  const formatted = rounded.toLocaleString();
+  const formatted = rounded.toLocaleString(locale);
   const sign = amount < 0 ? '-' : '';
   return `${sign}${symbol}${formatted}`;
 }

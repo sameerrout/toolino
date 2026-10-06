@@ -4,8 +4,8 @@ This is the primary and recommended deployment. It serves the site as static fil
 from S3 through CloudFront, which for a site with no backend is both the cheapest
 and the fastest option available on AWS.
 
-**Why it fits this project:** Toolnova has no server-side processing. There is no
-API route, no database, no session and no job queue. That means there is nothing
+**Why it fits this project:** Toolino has client-side processing. There is no
+API route, no database, no session and no job queue needed for static delivery. That means there is nothing
 to run on a server, so there is nothing to pay for beyond storage and bandwidth,
 and nothing to patch.
 
@@ -63,8 +63,8 @@ Set these shell variables first; every command below uses them.
 
 ```bash
 export AWS_REGION=us-east-1
-export BUCKET=toolnova-site
-export DOMAIN=toolnova.com
+export BUCKET=toolino-site
+export DOMAIN=toolino-one.vercel.app
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ```
 
@@ -133,8 +133,8 @@ Replace `CERTIFICATE_ARN` with the ARN from step 2.
 ```bash
 cat > /tmp/dist-config.json <<JSON
 {
-  "CallerReference": "toolnova-$(date +%s)",
-  "Comment": "Toolnova static site",
+  "CallerReference": "toolino-$(date +%s)",
+  "Comment": "Toolino static site",
   "Enabled": true,
   "DefaultRootObject": "index.html",
   "Aliases": { "Quantity": 2, "Items": ["$DOMAIN", "www.$DOMAIN"] },
@@ -188,7 +188,7 @@ Two notes on that config:
 ```bash
 aws cloudfront create-origin-access-control \
   --origin-access-control-config \
-    "Name=toolnova-oac,Description=OAC for $BUCKET,SigningProtocol=sigv4,SigningBehavior=always,OriginAccessControlOriginType=s3" \
+    "Name=toolino-oac,Description=OAC for $BUCKET,SigningProtocol=sigv4,SigningBehavior=always,OriginAccessControlOriginType=s3" \
   --query 'OriginAccessControl.Id' --output text
 ```
 
@@ -239,7 +239,7 @@ export CF_DOMAIN=$(aws cloudfront get-distribution \
 
 cat > /tmp/route53.json <<JSON
 {
-  "Comment": "Toolnova apex and www to CloudFront",
+  "Comment": "Toolino apex and www to CloudFront",
   "Changes": [
     {
       "Action": "UPSERT",

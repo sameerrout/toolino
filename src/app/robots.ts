@@ -22,6 +22,8 @@ export default function robots(): MetadataRoute.Robots {
           '/_next/static/chunks/',
           // Machine-generated legacy redirect stubs.
           '/go/',
+          // Internal API routes
+          '/api/',
         ],
       },
       {

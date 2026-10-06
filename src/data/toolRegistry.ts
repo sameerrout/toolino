@@ -88,7 +88,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
       'zip maker no upload',
     ],
     privacyNote:
-      'Your files are read straight from your disk by your browser and compressed on your own device. Nothing is uploaded, and there is no file size limit imposed by a server.',
+      'Your files are read straight from your disk by your browser and compressed locally on your own device. Nothing is uploaded to any server. Practical limits depend on browser memory and available disk space.',
   },
   {
     slug: 'extract-zip',
@@ -280,7 +280,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     keyword: 'password protect pdf',
     secondaryKeywords: ['encrypt pdf', 'pdf password online', 'secure pdf file'],
     privacyNote:
-      'Encryption runs in your browser with the Web Crypto API and PDF-LIB. Because the password never leaves your device, there is nothing for anyone else to intercept.',
+      'Password-protect your PDF locally in your browser using standard PDF encryption. Because the password and document never leave your device, your private files stay on your machine.',
   },
   {
     slug: 'image-to-pdf',
@@ -526,7 +526,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     keyword: 'qr code generator',
     secondaryKeywords: ['free qr code', 'wifi qr code', 'vcard qr code', 'qr code png svg'],
     privacyNote:
-      'QR codes are generated locally with no account and no tracking redirect. The codes are static, so they keep working forever and never expire.',
+      'QR codes are generated locally with no account and no tracking redirect. The QR code itself does not expire when generated as a static QR code, but the destination or information encoded in it must remain valid.',
   },
 
   // =========================================================================

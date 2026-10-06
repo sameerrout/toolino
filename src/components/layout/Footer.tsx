@@ -17,19 +17,19 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 text-sm">
           {/* Brand Info */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className="text-2xl font-extrabold tracking-tight text-white">
                 Tool<span className="text-blue-400">ino</span>
               </span>
             </div>
-            <p className="text-blue-200 text-xs leading-relaxed max-w-sm">
+            <p className="text-blue-200 text-xs leading-relaxed">
               Free, fast, and privacy-conscious online tools. Convert, edit, and optimize PDFs,
               images, and files inside your browser without uploading to any servers.
             </p>
             <div className="inline-flex items-center gap-2 rounded-xl bg-blue-950/60 border border-blue-700/60 px-3 py-2 text-xs text-blue-200">
               <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
-              <span>100% Client-Side Privacy: Your files never leave your device.</span>
+              <span>Client-Side Privacy: Files are processed locally in your browser.</span>
             </div>
           </div>
 
@@ -60,7 +60,7 @@ export function Footer() {
             </h3>
             <ul className="space-y-1.5 text-xs text-blue-200">
               <li>
-                <Link href="/tools/create-zip/" className="hover:text-white transition block font-medium text-white">
+                <Link href="/tools/create-zip/" className="hover:text-white transition block">
                   Create ZIP Archive
                 </Link>
               </li>
@@ -87,6 +87,47 @@ export function Footer() {
               <li>
                 <Link href="/tools/passport-photo/" className="hover:text-white transition block">
                   Passport Photo Maker
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Calculators & Text Tools */}
+          <div className="space-y-2">
+            <h3 className="font-bold text-white text-sm mb-3">
+              <Link href="/tools/calculators/" className="hover:text-blue-300 transition">
+                Calculators &amp; Text
+              </Link>
+            </h3>
+            <ul className="space-y-1.5 text-xs text-blue-200">
+              <li>
+                <Link href="/tools/emi-calculator/" className="hover:text-white transition block">
+                  EMI Calculator
+                </Link>
+              </li>
+              <li>
+                <Link href="/tools/gst-calculator/" className="hover:text-white transition block">
+                  GST Calculator
+                </Link>
+              </li>
+              <li>
+                <Link href="/tools/age-calculator/" className="hover:text-white transition block">
+                  Age Calculator
+                </Link>
+              </li>
+              <li>
+                <Link href="/tools/percentage-calculator/" className="hover:text-white transition block">
+                  Percentage Calculator
+                </Link>
+              </li>
+              <li>
+                <Link href="/tools/json-formatter/" className="hover:text-white transition block">
+                  JSON Formatter
+                </Link>
+              </li>
+              <li>
+                <Link href="/tools/qr-code-generator/" className="hover:text-white transition block">
+                  QR Code Generator
                 </Link>
               </li>
             </ul>

@@ -106,7 +106,7 @@ export default function ToolsIndexPage() {
       })}
 
       <Container className="py-12">
-        <div className="prose-toolnova max-w-3xl">
+        <div className="prose-toolino max-w-3xl">
           <h2>How to choose the right tool</h2>
           <p>
             If your goal is to make a file smaller, start with what the file actually is. A PDF that

@@ -3,9 +3,9 @@ import type { ToolContent } from '@/content/types';
 export const emiCalculatorContent: ToolContent = {
   overviewHeading: 'What this loan EMI calculator does',
   overview: [
-    'This loan EMI (Equated Monthly Installment) calculator computes your exact monthly loan repayments, total interest payable, and overall loan cost for home loans, car loans, personal loans, and education loans. It uses the standard reducing-balance amortization method utilized by banks and commercial lenders worldwide.',
+    'This loan EMI (Equated Monthly Installment) calculator computes estimated monthly loan repayments, total interest payable, and overall loan cost for home loans, car loans, personal loans, and education loans. It uses the standard reducing-balance amortization method utilized by banks and commercial lenders worldwide.',
     'It provides both monthly and yearly amortization schedules, illustrating how each monthly payment is split between principal repayment and interest charges over the full loan tenure.',
-    'All calculations happen 100% locally in your browser. Unlike banking portals that require your phone number or email before showing repayment estimates, Toolino requires zero personal data, login, or phone number.',
+    'All calculations happen locally in your browser. Unlike banking portals that require your phone number or email before showing repayment estimates, Toolino requires zero personal data, login, or phone number.',
   ],
   howTo: {
     heading: 'How to calculate your monthly loan EMI',
@@ -39,7 +39,7 @@ export const emiCalculatorContent: ToolContent = {
     items: [
       {
         title: 'Standard reducing-balance formula',
-        text: 'Matches the exact mathematical formula used by commercial banks and mortgage lenders.',
+        text: 'Uses the standard reducing-balance mathematical formula utilized by commercial banks and mortgage lenders.',
       },
       {
         title: 'Complete amortization breakdown',
@@ -73,7 +73,7 @@ export const emiCalculatorContent: ToolContent = {
       'In a reducing-balance loan, early monthly payments consist largely of interest, while later payments consist mostly of principal.',
       'Opting for a shorter loan tenure increases monthly EMI but dramatically reduces the total interest paid over the life of the loan.',
       'Prepaying or making extra lump-sum payments toward your principal directly reduces the remaining loan balance and total tenure.',
-      'Ensure you account for lender processing fees and insurance when finalizing your overall loan budget.',
+      'Calculations are estimates for planning purposes. Actual lender figures may vary slightly due to processing fees, statutory taxes, insurance, rounding rules, or specific day-count conventions.',
     ],
   },
   faqs: [

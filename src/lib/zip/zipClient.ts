@@ -285,7 +285,7 @@ export function defaultArchiveName(entries: ZipSourceFile[]): string {
   const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
     now.getDate()
   ).padStart(2, '0')}`;
-  return `toolnova-${stamp}.zip`;
+  return `toolino-${stamp}.zip`;
 }
 
 /** Re-exported so tools do not need to import two modules. */

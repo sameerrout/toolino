@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "CloudFront Response Headers Policy for Toolnova.",
+    "CloudFront Response Headers Policy for Toolino.",
     "",
     "Apply it with:",
     "  aws cloudfront create-response-headers-policy --response-headers-policy-config file://deploy/cloudfront/response-headers-policy.json",
@@ -15,8 +15,8 @@
     " 2. connect-src/img-src/frame-src allow the Google ad and analytics origins, which AdSense",
     "    and GA4 both require. Nothing else third-party is permitted."
   ],
-  "Name": "toolnova-security-headers",
-  "Comment": "HSTS, nosniff, referrer policy, permissions policy, frame options and CSP for Toolnova",
+  "Name": "toolino-security-headers",
+  "Comment": "HSTS, nosniff, referrer policy, permissions policy, frame options and CSP for Toolino",
   "SecurityHeadersConfig": {
     "XSSProtection": {
       "Override": true,

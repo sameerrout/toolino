@@ -54,8 +54,8 @@ export const imageToTextContent: ToolContent = {
         text: 'Quickly clean up formatting, verify confidence levels, and copy the final output with a single tap.',
       },
       {
-        title: 'Unlimited free conversions',
-        text: 'No daily page limits, paywalls, or document size subscriptions typical of commercial cloud OCR APIs.',
+        title: 'Free local conversions',
+        text: 'No paywalls or subscription gates. Processing runs directly in your browser without cloud OCR meter charges.',
       },
     ],
   },

@@ -10,7 +10,7 @@ import type { ToolContent } from '@/content/types';
  */
 export function ToolContentSections({ content }: { content: ToolContent }) {
   return (
-    <div className="prose-toolnova">
+    <div className="prose-toolino">
       <h2>{content.overviewHeading}</h2>
       {content.overview.map((paragraph) => (
         <p key={paragraph.slice(0, 40)}>{paragraph}</p>

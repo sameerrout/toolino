@@ -60,7 +60,7 @@ export default function CookiePolicyPage() {
             <tbody>
               <tr>
                 <td className="border-b border-slate-100 px-3 py-2 align-top text-slate-700">
-                  <code>toolnova.consent.v1</code>
+                  <code>toolino.consent.v1</code>
                 </td>
                 <td className="border-b border-slate-100 px-3 py-2 align-top text-slate-700">
                   {BRAND.name}
@@ -183,7 +183,7 @@ export default function CookiePolicyPage() {
 
         <h3>Strictly necessary</h3>
         <p>
-          The only entry here is <code>toolnova.consent.v1</code>, which we write to local storage
+          The only entry here is <code>toolino.consent.v1</code>, which we write to local storage
           rather than as a cookie. It records two booleans, one for analytics and one for advertising,
           plus the time of your decision and a version number. It carries no identifier and is never
           sent to us. We treat it as strictly necessary because without it we could not remember a

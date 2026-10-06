@@ -13,7 +13,7 @@
  * fast on a slow connection, run this script once, upload `public/models/` with
  * the rest of the site, and set:
  *
- *   NEXT_PUBLIC_BG_REMOVAL_ASSET_BASE=   (your origin, e.g. https://toolnova.com)
+ *   NEXT_PUBLIC_BG_REMOVAL_ASSET_BASE=   (your origin, e.g. https://toolino-one.vercel.app)
  *   NEXT_PUBLIC_OCR_ASSET_BASE=          (your origin)
  *
  * `public/models/` is git-ignored because it is large and regenerable.

@@ -38,12 +38,12 @@ export const qrCodeGeneratorContent: ToolContent = {
     intro: 'Designed for business owners, marketers, event organizers, and graphic designers.',
     items: [
       {
-        title: 'Permanent codes that never expire',
-        text: 'Encodes your destination directly into the matrix without middleman tracking URLs, meaning your QR code works forever.',
+        title: 'Static codes without redirect expiration',
+        text: 'The QR code itself does not expire when generated as a static QR code, but the destination or information encoded in it must remain valid.',
       },
       {
         title: 'Scalable vector SVG & high-res PNG',
-        text: 'Download scalable vector SVG graphics for massive billboards and print shops, or crisp raster PNGs for mobile screens.',
+        text: 'Download scalable vector SVG graphics for large displays and print shops, or crisp raster PNGs for mobile screens.',
       },
       {
         title: 'Complete privacy & no telemetry',
@@ -64,7 +64,7 @@ export const qrCodeGeneratorContent: ToolContent = {
     paragraphs: [
       'Many third-party QR code generators route every scan through proprietary redirect servers so they can collect user analytics, serve advertisements, or charge subscription fees to keep the code active.',
       'Toolino produces true static QR codes directly in your browser using pure client-side mathematical algorithms. The data you enter is baked permanently into the black-and-white grid pattern.',
-      'We do not capture your Wi-Fi credentials, personal phone numbers, or private URLs. The resulting code belongs 100% to you.',
+      'We do not capture your Wi-Fi credentials, personal phone numbers, or private URLs. The resulting code belongs completely to you.',
     ],
   },
   goodToKnow: {
@@ -80,7 +80,7 @@ export const qrCodeGeneratorContent: ToolContent = {
     {
       question: 'Do these QR codes expire?',
       answer:
-        'No. These are permanent static QR codes. Your destination data is encoded directly into the pattern, so the code works indefinitely without any subscription or renewal required.',
+        'The QR code itself does not expire when generated as a static QR code, because data is encoded directly into the matrix without middleman tracking URLs. However, the destination URL, phone number, Wi-Fi password, or target info must remain active.',
     },
     {
       question: 'Can I use these QR codes for commercial projects?',

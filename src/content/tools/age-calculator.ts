@@ -39,7 +39,7 @@ export const ageCalculatorContent: ToolContent = {
     items: [
       {
         title: 'Precise calendar mathematics',
-        text: 'Correctly accounts for February 29th leap years and varying month durations for 100% legal accuracy.',
+        text: 'Correctly accounts for February 29th leap years and varying month durations for accurate date difference calculation.',
       },
       {
         title: 'Compare against any target date',

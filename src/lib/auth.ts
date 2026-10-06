@@ -22,7 +22,7 @@ export function isManagerEmail(email: string | null | undefined): boolean {
   return authorized.some((mgr) => mgr.toLowerCase() === normalized);
 }
 
-const SESSION_COOKIE_NAME = 'toolnova_session';
+const SESSION_COOKIE_NAME = 'toolino_session';
 
 /**
  * Retrieves the cryptographic session secret from the environment.

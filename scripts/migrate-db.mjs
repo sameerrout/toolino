@@ -1,9 +1,9 @@
 /**
- * Toolnova - Database Migration Script
+ * Toolino - Database Migration Script
  * Migrates data from local db.json to PostgreSQL (Amazon RDS or configured DATABASE_URL)
  *
  * Usage:
- *   DATABASE_URL="postgresql://user:pass@host:5432/toolnova" node scripts/migrate-db.mjs
+ *   DATABASE_URL="postgresql://user:pass@host:5432/toolino" node scripts/migrate-db.mjs
  */
 
 import fs from 'node:fs';
@@ -17,7 +17,7 @@ const ROOT = path.join(__dirname, '..');
 const DB_FILE = path.join(ROOT, '.data', 'db.json');
 
 async function migrate() {
-  console.log('--- Toolnova Database Migration ---');
+  console.log('--- Toolino Database Migration ---');
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {

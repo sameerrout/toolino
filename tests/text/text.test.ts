@@ -23,11 +23,11 @@ describe('Text Tools & String Analysis', () => {
   });
 
   it('validates and minifies JSON format', () => {
-    const raw = '{\n  "name": "Toolnova",\n  "tools": 27\n}';
+    const raw = '{\n  "name": "Toolino",\n  "tools": 26\n}';
     const parsed = JSON.parse(raw);
     const minified = JSON.stringify(parsed);
 
-    expect(minified).toBe('{"name":"Toolnova","tools":27}');
-    expect(JSON.stringify(parsed, null, 2)).toContain('  "name": "Toolnova"');
+    expect(minified).toBe('{"name":"Toolino","tools":26}');
+    expect(JSON.stringify(parsed, null, 2)).toContain('  "name": "Toolino"');
   });
 });

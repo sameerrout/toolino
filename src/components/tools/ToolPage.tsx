@@ -76,6 +76,7 @@ export function ToolPage({
             description: content.howTo.intro,
             steps: content.howTo.steps.map((step) => ({ name: step.name, text: step.text })),
             tool: [`${tool.name} on ${BRAND.name}`],
+            path: toolPath(slug),
           }),
           faqSchema(content.faqs),
         ]}

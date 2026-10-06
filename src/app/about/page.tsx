@@ -83,10 +83,10 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <div className="prose-toolnova mt-10 max-w-3xl">
+        <div className="prose-toolino mt-10 max-w-3xl">
           <h2>Creators</h2>
           <p>
-            {BRAND.name} was created by <strong>Sameer Rout</strong> and <strong>Sampangi Sony</strong>. Built with a focus on speed, accessibility, and complete privacy, the platform provides everyday online utilities that execute 100% inside your browser so your files and sensitive data never leave your device.
+            {BRAND.name} was created by <strong>Sameer Rout</strong> and <strong>Sampangi Sony</strong>. Built with a focus on speed, accessibility, and privacy, the platform provides everyday online utilities designed to process files locally in your browser without uploading your documents to remote servers. Practical processing limits depend on your device memory and file size.
           </p>
 
           <h2>Why this site exists</h2>
@@ -171,7 +171,7 @@ export default function AboutPage() {
           ))}
         </ul>
 
-        <div className="prose-toolnova mt-12 max-w-3xl">
+        <div className="prose-toolino mt-12 max-w-3xl">
           <h2>What we are not</h2>
           <p>
             We are not affiliated with Google, Adobe, Microsoft, Apple or any other company whose

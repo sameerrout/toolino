@@ -97,7 +97,7 @@ export default function BlogIndexPage() {
       </Container>
 
       <Container className="pb-14">
-        <div className="prose-toolnova max-w-3xl">
+        <div className="prose-toolino max-w-3xl">
           <h2>What these guides are for</h2>
           <p>
             Most &ldquo;how to&rdquo; articles about file formats are written to rank rather than to

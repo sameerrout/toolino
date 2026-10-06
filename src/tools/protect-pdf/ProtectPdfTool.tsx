@@ -118,7 +118,7 @@ export function ProtectPdfTool() {
           onFiles={handleFile}
           accept="application/pdf"
           label="Drop PDF document here to protect"
-          hint="Encrypt with military-grade AES-256 standard security entirely in your browser."
+          hint="Password-protect your PDF locally in your browser using standard PDF encryption."
           disabled={running}
         />
       )}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Toolnova — deploy the static export to S3 + CloudFront.
+# Toolino — deploy the static export to S3 + CloudFront.
 #
 # Usage:
 #   ./deploy/deploy.sh                    # uses values from .env.deploy
@@ -37,7 +37,7 @@ BUCKET="${BUCKET:-}"
 DISTRIBUTION_ID="${DISTRIBUTION_ID:-}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 OUT_DIR="${OUT_DIR:-out}"
-SITE_URL="${NEXT_PUBLIC_SITE_URL:-https://toolnova.com}"
+SITE_URL="${NEXT_PUBLIC_SITE_URL:-https://toolino-one.vercel.app}"
 
 if [[ -z "$BUCKET" ]]; then
   echo "error: BUCKET is not set." >&2
@@ -50,7 +50,7 @@ if [[ -z "$DISTRIBUTION_ID" ]]; then
   echo "         HTML is uploaded with a short cache, so changes still appear within 5 minutes." >&2
 fi
 
-echo "==> Toolnova deploy"
+echo "==> Toolino deploy"
 echo "    bucket         : $BUCKET"
 echo "    distribution   : ${DISTRIBUTION_ID:-<not set>}"
 echo "    region         : $AWS_REGION"

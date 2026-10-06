@@ -7,6 +7,15 @@
  * URL reads from here.
  */
 
+/**
+ * Configurable support email address.
+ * Reads from `NEXT_PUBLIC_SUPPORT_EMAIL`. If not configured, defaults to a clearly marked
+ * placeholder so we never falsely claim domain ownership before official setup.
+ */
+export const SUPPORT_EMAIL = (
+  process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@example.com'
+).trim();
+
 export const BRAND = {
   /** User-facing brand name. Used in titles, footer, JSON-LD, emails. */
   name: 'Toolino',
@@ -15,17 +24,17 @@ export const BRAND = {
   /** Longer positioning line used on the homepage and in the Organization schema. */
   description:
     'Free, fast, and privacy-conscious online tools. Convert, edit, and optimize PDFs, images, and documents easily inside your browser without uploading files to servers.',
-  /** Public contact address for the Contact page and legal notices. */
-  email: 'support@toolino.com',
+  /** Public contact address for the Contact page and legal notices (centralized). */
+  email: SUPPORT_EMAIL,
   /** Postal-style locality used in legal pages (kept generic on purpose). */
   jurisdiction: 'England and Wales',
   /** Twitter/X handle, or null when the site has no account yet. */
   twitter: null as string | null,
 } as const;
 
-/** Trailing-slash-free canonical origin, e.g. `https://toolino.com`. */
+/** Trailing-slash-free canonical origin. Configurable via NEXT_PUBLIC_SITE_URL. */
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://toolino.com'
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://toolino-one.vercel.app'
 ).replace(/\/+$/, '');
 
 /** Builds an absolute URL for a site-relative path. */

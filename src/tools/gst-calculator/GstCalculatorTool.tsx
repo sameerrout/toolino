@@ -92,7 +92,13 @@ export function GstCalculatorTool() {
           </div>
 
           <div>
-            <label className="field-label">Standard GST Tax Slab</label>
+            <div className="flex items-baseline justify-between">
+              <label className="field-label mb-1">Standard GST Tax Slabs</label>
+              <span className="text-[11px] text-slate-500">Subject to HSN/SAC classification</span>
+            </div>
+            <p className="mb-2 text-xs text-slate-500">
+              Select the applicable GST rate for your product or service. GST rates can vary by classification and may change. Verify the current applicable rate with official GST guidance.
+            </p>
             <div className="grid grid-cols-3 gap-2">
               {CONFIGURABLE_GST_RATES.map((preset) => {
                 const isSelected = customRate === '' && rate === String(preset.rate);
@@ -219,6 +225,10 @@ export function GstCalculatorTool() {
               <span className="text-base text-brand-700">{formatGstCurrency(result.totalAmount)}</span>
             </div>
           </div>
+
+          <p className="text-center text-[11px] text-slate-400">
+            For estimation and invoicing assistance only. Does not replace professional tax or legal advice. Verify current rate schedules with official tax authorities.
+          </p>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Toolnova design system.
+ * Toolino design system.
  *
  * `content` deliberately includes `src/lib` and `src/data` because tool SEO
  * copy and prose components live there and contain Tailwind class names.

@@ -1,9 +1,9 @@
 # =============================================================================
-# Toolnova — alternative server deployment
+# Toolino — alternative server deployment
 # =============================================================================
 #
 # You do NOT need this file for the normal deployment. The site is a static
-# export served from S3 + CloudFront, which is cheaper, faster and has no runtime
+# export served from S3 + CloudFront or Vercel, which is cheaper, faster and has no runtime
 # to patch. See `deploy/cloudfront/README.md`.
 #
 # This image exists for the case where you later want server-side rendering:
@@ -13,13 +13,11 @@
 #      `output: 'standalone'` and remove `trailingSlash` if you rely on
 #      server-side redirects instead of the static stubs.
 #   2. Replace the S3 sync in CI with an ECR push plus an App Runner or ECS
-#      deploy. A running container costs roughly $5-25/month depending on
-#      traffic, versus about $6/month for the whole static stack, and Fargate
-#      behind an ALB costs considerably more.
+#      deploy.
 #
 # Build and run locally:
-#   docker build -t toolnova .
-#   docker run --rm -p 3000:3000 -e NEXT_PUBLIC_SITE_URL=http://localhost:3000 toolnova
+#   docker build -t toolino .
+#   docker run --rm -p 3000:3000 -e NEXT_PUBLIC_SITE_URL=http://localhost:3000 toolino
 #
 # =============================================================================
 
@@ -48,7 +46,7 @@ COPY . .
 # Build-time public configuration. These are inlined into the bundle, so they are
 # never secrets - and must NOT be swapped for real secrets here, because anything
 # passed as NEXT_PUBLIC_* ends up readable in the browser.
-ARG NEXT_PUBLIC_SITE_URL=https://toolnova.com
+ARG NEXT_PUBLIC_SITE_URL=https://toolino-one.vercel.app
 ARG NEXT_PUBLIC_ADSENSE_CLIENT=
 ARG NEXT_PUBLIC_GA_ID=
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL

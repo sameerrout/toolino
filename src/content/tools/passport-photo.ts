@@ -3,13 +3,13 @@ import type { ToolContent } from '@/content/types';
 export const passportPhotoContent: ToolContent = {
   overviewHeading: 'What this online passport photo maker does',
   overview: [
-    'This in-browser passport and visa photo maker turns any personal portrait into a compliant, official-standard biometric ID photograph. It provides pre-configured standard dimensions for over a dozen international jurisdictions, including US Passport (2x2 inch), UK Passport (35x45 mm), Schengen Visa (35x45 mm), Indian Passport & OCI (35x45 mm / 2x2 in), Canadian Visa, and Australian Passport.',
-    'It includes intuitive visual positioning tools to align your eyes, chin, and crown of head to strict biometric proportions. You can change the photo background to clean white, light grey, or light blue, adjust brightness and contrast, and tile multiple photos onto standard 4x6 inch (10x15 cm) photo paper for cheap printout at any local pharmacy or print kiosk.',
-    'Because identity photos are sensitive biometric data that can be misused for identity theft or facial recognition profiling, this tool runs 100% locally on your device. Your photo is never uploaded to any remote server.',
+    'This in-browser passport and visa photo maker is designed to help you prepare passport-style photos using commonly published size requirements for over a dozen international jurisdictions, including US Passport (2x2 inch), UK Passport (35x45 mm), Schengen Visa (35x45 mm), Indian Passport & OCI (35x45 mm / 2x2 in), Canadian Visa, and Australian Passport. Always verify the current photo requirements of the relevant authority before submitting.',
+    'It includes intuitive visual positioning tools to align your eyes, chin, and crown of head to published biometric proportions. You can change the photo background to clean white, light grey, or light blue, adjust brightness and contrast, and tile multiple photos onto standard 4x6 inch (10x15 cm) photo paper for convenient printing.',
+    'Because identity photos are personal biometric data, this tool processes your image locally in your browser. Your photo is never uploaded to any remote server.',
   ],
   howTo: {
-    heading: 'How to make official passport and visa photos',
-    intro: 'Create compliant ID photos and printable multi-photo sheets in minutes.',
+    heading: 'How to prepare passport and visa photos',
+    intro: 'Prepare ID photos and printable multi-photo sheets in minutes. Always verify official requirements before submission.',
     steps: [
       {
         name: 'Upload a clear front-facing portrait',
@@ -21,41 +21,41 @@ export const passportPhotoContent: ToolContent = {
       },
       {
         name: 'Align face with biometric guidelines',
-        text: 'Zoom, pan, and rotate your image until your eye line and chin fit within the biometric alignment template guides.',
+        text: 'Zoom, pan, and rotate your image until your eye line and chin fit within the alignment template guides.',
       },
       {
         name: 'Choose background color and adjustments',
-        text: 'Select required background color (pure white, off-white, or light blue) and fine-tune brightness and contrast.',
+        text: 'Select required background color (pure white, off-white, or light blue) and fine-tune brightness and contrast according to authority rules.',
       },
       {
         name: 'Download single photo or printable 4x6 sheet',
-        text: 'Export a single high-resolution digital JPG for online visa submissions, or a 4x6 inch multi-photo sheet with 6-8 photos ready for printing.',
+        text: 'Export a single high-resolution digital JPG for online submissions, or a 4x6 inch multi-photo sheet with 6-8 photos ready for printing.',
       },
     ],
   },
   benefits: {
-    heading: 'Why make passport photos with Toolino',
-    intro: 'Avoid expensive studio fees and long queues at commercial photo booths.',
+    heading: 'Why prepare passport photos with Toolino',
+    intro: 'Designed for travellers, applicants, and families preparing passport and visa applications.',
     items: [
       {
         title: 'Complete biometric facial privacy',
         text: 'Your face, biometric proportions, and personal portrait are never transmitted to cloud servers or facial recognition databases.',
       },
       {
-        title: 'Official international size presets',
-        text: 'Pre-configured with precise millimeter and inch dimensions required by passport agencies in the US, UK, EU, India, and Canada.',
+        title: 'Common international size presets',
+        text: 'Pre-configured with commonly published millimeter and inch dimensions used by agencies in the US, UK, EU, India, and Canada.',
       },
       {
         title: 'Printable 4x6 inch sheet layout',
-        text: 'Automatically arranges 6 to 8 photos onto standard 4x6 inch photo paper so you can print for pennies at any photo kiosk.',
+        text: 'Automatically arranges 6 to 8 photos onto standard 4x6 inch photo paper so you can print conveniently at local photo kiosks.',
       },
       {
         title: '300 DPI high-resolution export',
-        text: 'Produces crisp, print-ready 300 DPI files with exact millimeter aspect ratios for guaranteed application acceptance.',
+        text: 'Produces crisp, print-ready 300 DPI files with standard aspect ratios to help you match published application guidelines.',
       },
       {
         title: 'Instant re-tries with no fees',
-        text: 'Take as many photos on your phone as you like until you find the perfect expression, with zero per-photo charges.',
+        text: 'Take as many photos on your phone as you like until you find the right photo, with zero fees.',
       },
     ],
   },
@@ -93,9 +93,9 @@ export const passportPhotoContent: ToolContent = {
         'Save the generated 4x6 inch image to your phone or flash drive and print it as a standard 4x6 inch (10x15 cm) borderless photo print at any local pharmacy, grocery store, or home photo printer for a fraction of studio costs.',
     },
     {
-      question: 'Will my passport photo be accepted by the government agency?',
+      question: 'Will my passport photo be accepted by the relevant authority?',
       answer:
-        'Yes, provided your uploaded portrait meets official government guidelines: even front lighting, neutral expression, no shadows, eyes clearly visible, and correctly aligned within our biometric guidelines.',
+        'This tool is designed to help you prepare photos using commonly published specifications. Acceptance ultimately depends on the reviewing authority, official criteria (lighting, neutral expression, contrast, head coverings), and the current rules in force. Always verify the current photo requirements of the relevant authority before submitting.',
     },
     {
       question: 'Is my facial image saved or stored on any server?',

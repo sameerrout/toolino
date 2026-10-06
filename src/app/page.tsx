@@ -90,7 +90,7 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto text-center px-6 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-xs font-semibold text-blue-100 mb-6 border border-white/20 shadow-xs">
             <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
-            <span>100% Private In-Browser Processing — No Server Uploads</span>
+            <span>Private In-Browser Processing — No Server File Uploads</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-6 tracking-tight drop-shadow-xs">
@@ -109,7 +109,7 @@ export default function HomePage() {
                 type="text"
                 name="q"
                 className="w-full px-5 py-3.5 text-gray-700 focus:outline-hidden text-sm sm:text-base placeholder-gray-400"
-                placeholder="Search tools (e.g. Create ZIP, Merge PDF, PIN Code Lookup)..."
+                placeholder="Search tools (e.g. Create ZIP, Merge PDF, Compress Image)..."
               />
               <button
                 type="submit"
@@ -230,10 +230,10 @@ export default function HomePage() {
               <div className="inline-flex p-3 rounded-2xl bg-blue-100 text-blue-600">
                 <Lock className="h-6 w-6" />
               </div>
-              <h3 className="font-bold text-base text-slate-900">Zero Server Uploads</h3>
+              <h3 className="font-bold text-base text-slate-900">Zero Server File Uploads</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                All image compression, PDF operations, and conversions run exclusively within your
-                browser's WebAssembly sandbox. Files never reach any remote server.
+                All image compression, PDF operations, and conversions run locally inside your
+                browser. Files never reach remote servers. Practical limits depend on your device memory.
               </p>
             </div>
 
@@ -252,10 +252,10 @@ export default function HomePage() {
               <div className="inline-flex p-3 rounded-2xl bg-blue-100 text-blue-600">
                 <ShieldCheck className="h-6 w-6" />
               </div>
-              <h3 className="font-bold text-base text-slate-900">Free &amp; Unlimited</h3>
+              <h3 className="font-bold text-base text-slate-900">Free to Use</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                No subscription paywalls, no daily file caps, and no mandatory registrations. Simply
-                open the tool you need and complete your work.
+                No subscription paywalls, no mandatory registrations, and no artificial daily caps. Simply
+                open the tool you need and complete your work privately.
               </p>
             </div>
           </div>

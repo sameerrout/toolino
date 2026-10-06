@@ -15,7 +15,7 @@ Three values must be real, not placeholders:
 
 | Value | Where | Currently |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | `.env.local` and your CI secrets | set to `https://toolnova.com` |
+| `NEXT_PUBLIC_SITE_URL` | `.env.local` and your CI secrets | set to `https://toolino-one.vercel.app` (or your custom domain) |
 | `NEXT_PUBLIC_ADSENSE_CLIENT` | `.env.local` and your CI secrets | **empty — ads disabled** |
 | `NEXT_PUBLIC_GA_ID` | `.env.local` and your CI secrets | **empty — analytics disabled** |
 

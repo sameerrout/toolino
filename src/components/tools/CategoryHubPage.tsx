@@ -8,7 +8,7 @@ import { AdSlot } from '@/components/ads/AdSlot';
 import { AD_SLOTS } from '@/components/tools/ToolPage';
 
 import { breadcrumbSchema, webPageSchema } from '@/lib/seo/schema';
-import { BRAND } from '@/lib/site';
+import { absoluteUrl } from '@/lib/site';
 import { CATEGORY_META, CATEGORY_ORDER } from '@/data/categories';
 import { getToolsByCategory, getRelatedTools } from '@/data/toolRegistry';
 import type { CategorySlug } from '@/lib/tools';
@@ -52,7 +52,7 @@ export function CategoryHubPage({ category }: { category: CategorySlug }) {
             '@type': 'CollectionPage',
             name: meta.title,
             description: meta.metaDescription,
-            url: `${BRAND.name} /tools/${category}/`,
+            url: absoluteUrl(`/tools/${category}/`),
             hasPart: tools.map((tool) => ({
               '@type': 'SoftwareApplication',
               name: tool.name,
@@ -91,7 +91,7 @@ export function CategoryHubPage({ category }: { category: CategorySlug }) {
       </Container>
 
       <Container className="py-10">
-        <div className="prose-toolnova max-w-3xl">
+        <div className="prose-toolino max-w-3xl">
           <h2>About these {meta.navLabel.toLowerCase()}</h2>
           {HUB_PROSE[category].map((paragraph) => (
             <p key={paragraph.slice(0, 40)}>{paragraph}</p>

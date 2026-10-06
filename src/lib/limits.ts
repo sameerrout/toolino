@@ -42,7 +42,7 @@ export const TOOL_LIMITS: Record<ToolSlug, ToolLimitSpec> = {
     maxCanvasEdge: 0,
     chunkSize: 24,
     concurrency: 1,
-    note: 'Unlimited file types. Files above 2 GB each are skipped with a warning.',
+    note: 'Any file type supported. Files above 2 GB each are skipped with a warning.',
   },
   'extract-zip': {
     maxFiles: 1,
