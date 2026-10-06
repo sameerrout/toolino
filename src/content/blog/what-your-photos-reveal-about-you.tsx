@@ -119,7 +119,7 @@ export function WhatYourPhotosRevealAboutYouArticle() {
       <p>
         Tools that edit EXIF can remove selected tags and nothing else. This is the right choice when
         you want to keep the capture date and copyright line but drop the GPS block, and it is the
-        only approach that leaves the image data bit-for-bit identical.
+        approach that leaves the underlying compressed image stream completely untouched without recompression.
       </p>
       <blockquote>
         A useful habit: any image you are about to publish should pass through a step that rewrites

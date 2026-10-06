@@ -38,8 +38,8 @@ export const passportPhotoContent: ToolContent = {
     intro: 'Designed for travellers, applicants, and families preparing passport and visa applications.',
     items: [
       {
-        title: 'Complete biometric facial privacy',
-        text: 'Your face, biometric proportions, and personal portrait are never transmitted to cloud servers or facial recognition databases.',
+        title: 'Local in-browser photo processing',
+        text: 'Your photo is processed locally in your browser. Personal portraits are never transmitted to cloud servers or remote facial recognition databases.',
       },
       {
         title: 'Common international size presets',

@@ -160,7 +160,7 @@ export function PassportPhotoTool() {
           onFiles={handleFile}
           accept="image/*"
           label="Drop portrait photo here to create passport photo"
-          hint="Make official US, UK, Schengen, and Indian passport photos ready to print."
+          hint="Prepare passport-style photos using common US, UK, Schengen, and Indian size standards ready to print."
           disabled={running}
         />
       )}

@@ -448,8 +448,8 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     weight: 'medium',
     metaTitle: 'Passport Photo Maker Free - US, UK, EU, India Sizes',
     metaDescription:
-      'Create a compliant passport or visa photo at 300 DPI for US, UK, EU, India, Canada and Australia rules, and print a 4x6 inch sheet. No upload, no signup.',
-    tagline: 'Crop to an official size and print a 4x6 inch sheet at 300 DPI.',
+      'Prepare passport-style photos at 300 DPI using common US, UK, EU, India and Canada requirements, ready to print on a 4x6 sheet. Runs locally in browser.',
+    tagline: 'Crop to common passport-style photo sizes and prepare a 4x6 inch print sheet at 300 DPI.',
     accept: ['.jpg', '.jpeg', '.png', '.webp'],
     acceptAttribute: 'image/jpeg,image/png,image/webp',
     outputFormats: ['JPG', 'PNG'],
@@ -526,7 +526,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     keyword: 'qr code generator',
     secondaryKeywords: ['free qr code', 'wifi qr code', 'vcard qr code', 'qr code png svg'],
     privacyNote:
-      'QR codes are generated locally with no account and no tracking redirect. The QR code itself does not expire when generated as a static QR code, but the destination or information encoded in it must remain valid.',
+      'QR codes are generated locally with no account and no tracking redirect. Static QR codes do not have an expiration date. However, the information they contain must remain valid.',
   },
 
   // =========================================================================

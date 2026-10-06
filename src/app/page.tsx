@@ -243,8 +243,7 @@ export default function HomePage() {
               </div>
               <h3 className="font-bold text-base text-slate-900">Ultra-Fast Execution</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                By removing upload and download bottlenecks, files process directly with your device's
-                hardware at maximum local disk and CPU speeds.
+                Files are processed directly on your device, avoiding upload and download delays.
               </p>
             </div>
 

@@ -43,8 +43,14 @@ export default function TermsOfServicePage() {
         <p>
           You do not need an account to use any tool, and we do not charge for any of them. We do not
           ask for your name, email address or payment details. If a page asks you to pay for{' '}
-          {BRAND.name}, or for card details claiming to be us, it is not ours: report it to{' '}
-          <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>.
+          {BRAND.name}, or for card details claiming to be us, it is not ours: report it through our{' '}
+          <Link href="/contact/">contact page</Link>
+          {BRAND.email ? (
+            <>
+              {' '}or to <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>
+            </>
+          ) : null}
+          .
         </p>
 
         <h2>Acceptable use</h2>
@@ -175,8 +181,13 @@ export default function TermsOfServicePage() {
         <h2>How to contact us</h2>
         <p>
           Questions about these terms, formal notices, and reports of a site impersonating{' '}
-          {BRAND.name} should go to <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>. We aim to
-          reply within a few working days. The wider data-protection picture is in our{' '}
+          {BRAND.name} can be submitted through our <Link href="/contact/">contact page</Link>
+          {BRAND.email ? (
+            <>
+              {' '}or by email to <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>
+            </>
+          ) : null}
+          . We aim to reply within a few working days. The wider data-protection picture is in our{' '}
           <Link href="/privacy/">Privacy Policy</Link>.
         </p>
       </>

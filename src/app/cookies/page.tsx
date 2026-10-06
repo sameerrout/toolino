@@ -294,8 +294,13 @@ export default function CookiePolicyPage() {
           <Link href="/privacy/">Privacy Policy</Link>. Your use of the site is also governed by our{' '}
           <Link href="/terms/">Terms of Service</Link>, and the limits on what the tools can tell you
           are in our <Link href="/disclaimer/">Disclaimer</Link>. If anything here is unclear or
-          inaccurate, email <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a> and we will correct
-          it.
+          inaccurate, let us know via our <Link href="/contact/">contact page</Link>
+          {BRAND.email ? (
+            <>
+              {' '}or by email at <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>
+            </>
+          ) : null}
+          {' '}and we will correct it.
         </p>
       </>
     </LegalPage>

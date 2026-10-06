@@ -71,15 +71,30 @@ export function LegalPage({
       <div className="mt-12 max-w-3xl rounded-2xl border border-slate-200 bg-slate-50 p-5">
         <h2 className="text-base font-semibold text-slate-900">Questions about this page</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Write to{' '}
-          <a
-            href={`mailto:${BRAND.email}`}
-            className="font-medium text-brand-700 underline hover:text-brand-800"
-          >
-            {BRAND.email}
-          </a>{' '}
-          and we will answer, or correct the page if something here is wrong or out of date. You can
-          also read the rest of our policies: <Link href="/privacy/">Privacy</Link>,{' '}
+          {BRAND.email ? (
+            <>
+              Write to{' '}
+              <a
+                href={`mailto:${BRAND.email}`}
+                className="font-medium text-brand-700 underline hover:text-brand-800"
+              >
+                {BRAND.email}
+              </a>{' '}
+              and we will answer, or correct the page if something here is wrong or out of date.
+            </>
+          ) : (
+            <>
+              Send questions or corrections through our{' '}
+              <Link
+                href="/contact/"
+                className="font-medium text-brand-700 underline hover:text-brand-800"
+              >
+                contact support form
+              </Link>
+              , and we will review and respond promptly.
+            </>
+          )}{' '}
+          You can also read the rest of our policies: <Link href="/privacy/">Privacy</Link>,{' '}
           <Link href="/terms/">Terms</Link>, <Link href="/cookies/">Cookies</Link>,{' '}
           <Link href="/disclaimer/">Disclaimer</Link>.
         </p>

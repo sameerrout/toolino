@@ -183,8 +183,13 @@ export default function DisclaimerPage() {
         <h2>How to contact us</h2>
         <p>
           If you believe something on this site is inaccurate, misleading, out of date or unsafe to
-          rely on, please tell us at <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a> with the page
-          or tool concerned. We would rather correct a problem than leave it standing. For the wider
+          rely on, please report it through our <Link href="/contact/">contact page</Link>
+          {BRAND.email ? (
+            <>
+              {' '}or at <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>
+            </>
+          ) : null}
+          {' '}with the page or tool concerned. We would rather correct a problem than leave it standing. For the wider
           picture, see our <Link href="/privacy/">Privacy Policy</Link>, our{' '}
           <Link href="/cookies/">Cookie Policy</Link> and our <Link href="/terms/">Terms of Service</Link>.
         </p>

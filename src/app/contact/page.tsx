@@ -90,14 +90,22 @@ export default function ContactPage() {
             Contact us
           </h1>
           <p className="mt-4 text-lg text-slate-600">
-            {BRAND.name} is run by a small team, and a real person reads every message. The fastest
-            route is always email:{' '}
-            <a
-              href={`mailto:${BRAND.email}`}
-              className="font-semibold text-brand-700 underline hover:text-brand-800"
-            >
-              {BRAND.email}
-            </a>
+            {BRAND.name} is run by a small team, and a real person reads every message.
+            {BRAND.email ? (
+              <>
+                {' '}The fastest route is always email:{' '}
+                <a
+                  href={`mailto:${BRAND.email}`}
+                  className="font-semibold text-brand-700 underline hover:text-brand-800"
+                >
+                  {BRAND.email}
+                </a>.
+              </>
+            ) : (
+              <>
+                {' '}Please use the contact form below to get in touch with bug reports, feature suggestions, or questions.
+              </>
+            )}
           </p>
         </div>
 

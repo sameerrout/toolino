@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T13:52:56.742Z",
+  "generatedAt": "2026-10-06T14:55:26.718Z",
   "redirects": [
     {
       "from": "/files-to-zip",
@@ -523,6 +523,16 @@
     },
     {
       "from": "/tools/edit-pdf",
+      "to": "/tools/pdf-tools/",
+      "status": 301
+    },
+    {
+      "from": "/annotate-pdf",
+      "to": "/tools/pdf-tools/",
+      "status": 301
+    },
+    {
+      "from": "/write-on-pdf",
       "to": "/tools/pdf-tools/",
       "status": 301
     },

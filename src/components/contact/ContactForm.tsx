@@ -77,13 +77,17 @@ export function ContactForm() {
   );
 
   const mailtoHref = useMemo(
-    () => `mailto:${BRAND.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    () => {
+      const recipient = BRAND.email ? BRAND.email : '';
+      return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    },
     [subject, body]
   );
 
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(`To: ${BRAND.email}\nSubject: ${subject}\n\n${body}`);
+      const target = BRAND.email ? `To: ${BRAND.email}\n` : '';
+      await navigator.clipboard.writeText(`${target}Subject: ${subject}\n\n${body}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -95,12 +99,17 @@ export function ContactForm() {
     <div className="card">
       <h2 className="text-lg font-semibold text-slate-900">Send us a message</h2>
       <p className="mt-1 text-sm text-slate-600">
-        This form opens your own email app with the message filled in, so nothing is transmitted
-        through this website. If you prefer, write to{' '}
-        <a href={`mailto:${BRAND.email}`} className="font-medium text-brand-700 underline">
-          {BRAND.email}
-        </a>{' '}
-        directly.
+        This form opens your email client with the message pre-filled, so nothing is transmitted
+        through or stored by this website.
+        {BRAND.email ? (
+          <>
+            {' '}If you prefer, write to{' '}
+            <a href={`mailto:${BRAND.email}`} className="font-medium text-brand-700 underline">
+              {BRAND.email}
+            </a>{' '}
+            directly.
+          </>
+        ) : null}
       </p>
 
       <form
@@ -169,7 +178,7 @@ export function ContactForm() {
               aria-invalid={touched && Boolean(errors.email)}
               aria-describedby={touched && errors.email ? 'contact-email-error' : undefined}
               className="field-input"
-              placeholder="you@example.com"
+              placeholder="you@domain.com"
             />
             {touched && errors.email ? (
               <p id="contact-email-error" className="mt-1 text-xs text-red-700">

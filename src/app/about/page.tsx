@@ -196,9 +196,13 @@ export default function AboutPage() {
           </p>
           <p>
             For questions, corrections to a guide, or anything else, use the{' '}
-            <Link href="/contact/">contact page</Link> or email{' '}
-            <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>. We read everything and answer most
-            things within a couple of days.
+            <Link href="/contact/">contact page</Link>
+            {BRAND.email ? (
+              <>
+                {' '}or email <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>
+              </>
+            ) : null}
+            . We read everything and answer most inquiries within a couple of days.
           </p>
         </div>
 

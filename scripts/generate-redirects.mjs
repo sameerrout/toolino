@@ -46,6 +46,8 @@ const SITE_REDIRECTS = [
   { from: '/pdf-editor', to: '/tools/pdf-tools/' },
   { from: '/editor-pdf', to: '/tools/pdf-tools/' },
   { from: '/tools/edit-pdf', to: '/tools/pdf-tools/' },
+  { from: '/annotate-pdf', to: '/tools/pdf-tools/' },
+  { from: '/write-on-pdf', to: '/tools/pdf-tools/' },
   { from: '/pin-code-lookup', to: '/tools/text-tools/' },
   { from: '/pincode-lookup', to: '/tools/text-tools/' },
   { from: '/pincode-finder', to: '/tools/text-tools/' },

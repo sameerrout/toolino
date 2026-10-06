@@ -187,7 +187,7 @@ export function QrCodeGeneratorTool() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 className="field-input"
-                placeholder="https://example.com"
+                placeholder="https://mysite.com"
               />
             </div>
           )}
@@ -253,7 +253,7 @@ export function QrCodeGeneratorTool() {
                   value={emailTo}
                   onChange={(e) => setEmailTo(e.target.value)}
                   className="field-input"
-                  placeholder="contact@example.com"
+                  placeholder="contact@domain.com"
                 />
               </div>
               <div>
@@ -346,7 +346,7 @@ export function QrCodeGeneratorTool() {
                   value={vcardEmail}
                   onChange={(e) => setVcardEmail(e.target.value)}
                   className="field-input"
-                  placeholder="jane@example.com"
+                  placeholder="jane@domain.com"
                 />
               </div>
               <div className="col-span-2">

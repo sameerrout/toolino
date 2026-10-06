@@ -3,9 +3,9 @@ import type { ToolContent } from '@/content/types';
 export const gstCalculatorContent: ToolContent = {
   overviewHeading: 'What this online GST calculator does',
   overview: [
-    'This online Goods and Services Tax (GST) calculator calculates both inclusive and exclusive GST amounts in seconds. Whether you need to add GST to a base invoice price or extract the net amount and tax portion from a gross total, it handles all standard slabs: 0%, 3%, 5%, 12%, 18%, and 28%, along with custom percentages.',
-    'It accurately splits tax amounts into intra-state components (Central GST and State GST, 50/50 split) or inter-state integrated tax (IGST 100%), matching statutory invoicing standards.',
-    'Select the applicable GST rate for your product or service. GST rates can vary by HSN/SAC classification and may change over time. Verify the current applicable rate with official GST guidance. This calculator is designed for planning and does not replace professional tax advice.',
+    'This online Goods and Services Tax (GST) calculator calculates both inclusive and exclusive GST amounts in seconds. Whether you need to add GST to a base invoice price or extract the net amount and tax portion from a gross total, it provides common GST rate options: 0%, 3%, 5%, 12%, 18%, and 28%, along with custom percentages.',
+    'It splits tax amounts into intra-state components (Central GST and State GST, 50/50 split) or inter-state integrated tax (IGST 100%) to assist with your invoice calculations.',
+    'The applicable GST rate depends on the product or service classification and current GST rules. Verify the applicable HSN/SAC rate before invoicing or filing. This calculator is a calculation utility designed for planning and does not determine legal tax compliance or replace professional tax advice.',
   ],
   howTo: {
     heading: 'How to calculate GST (Add or Remove GST)',
@@ -21,7 +21,7 @@ export const gstCalculatorContent: ToolContent = {
       },
       {
         name: 'Pick your GST tax rate',
-        text: 'Select standard rates (0%, 3%, 5%, 12%, 18%, 28%) or type a custom tax percentage.',
+        text: 'Select common GST rate options (0%, 3%, 5%, 12%, 18%, 28%) or type a custom tax percentage.',
       },
       {
         name: 'Select transaction type',
@@ -46,8 +46,8 @@ export const gstCalculatorContent: ToolContent = {
         text: 'Automatically calculates CGST and SGST splits for local sales or IGST for cross-border commercial transactions.',
       },
       {
-        title: 'Standard GST tax rate presets',
-        text: 'Includes quick-select buttons for 0%, 3%, 5%, 12%, 18%, and 28% tax slabs with category descriptions.',
+        title: 'Common GST rate presets',
+        text: 'Includes quick-select buttons for 0%, 3%, 5%, 12%, 18%, and 28% tax rates as well as custom percentages.',
       },
       {
         title: 'Invoice-ready currency formatting',

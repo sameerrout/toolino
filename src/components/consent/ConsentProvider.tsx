@@ -43,7 +43,6 @@ export interface ConsentState {
 
 export const CONSENT_VERSION = 1;
 const STORAGE_KEY = 'toolino.consent.v1';
-const LEGACY_STORAGE_KEY = 'toolnova.consent.v1';
 /** Region hint cookie is deliberately avoided; we use timezone detection. */
 const EEA_TIMEZONES = new Set([
   'Europe/Amsterdam', 'Europe/Andorra', 'Europe/Athens', 'Europe/Belgrade', 'Europe/Berlin',
@@ -95,10 +94,7 @@ function detectConsentRegion(): boolean {
 function readStoredConsent(): ConsentState | null {
   if (typeof window === 'undefined') return null;
   try {
-    let raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-    }
+    const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<ConsentState>;
     if (parsed.version !== CONSENT_VERSION) return null;
@@ -185,7 +181,6 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
     }
     // Let AdSense/GA4 react without a reload.
     window.dispatchEvent(new CustomEvent('toolino:consent', { detail: next }));
-    window.dispatchEvent(new CustomEvent('toolnova:consent', { detail: next }));
   }, []);
 
   const acceptAll = useCallback(() => {

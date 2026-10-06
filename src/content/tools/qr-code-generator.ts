@@ -5,11 +5,11 @@ export const qrCodeGeneratorContent: ToolContent = {
   overview: [
     'This tool creates high-resolution, scannable QR (Quick Response) codes instantly in your browser. Whether you need a code for your website, Wi-Fi network credentials, contact card (vCard), WhatsApp message, email link, or plain text, it generates crisp vector SVG and pixel-perfect PNG formats.',
     'You have full control over visual appearance: configure custom foreground and background colors, adjust pixel resolution, and select error correction levels from Low (7%) up to High (30%) so your codes remain scannable even if printed on textured materials or partially obscured.',
-    'Unlike commercial QR code services that redirect users through tracking shortlinks or expire after a trial period, this tool creates direct, permanent static QR codes. No redirects, no expiration dates, and no server tracking.',
+    'Unlike commercial QR code services that redirect users through tracking shortlinks or expire after a trial period, this tool creates direct static QR codes. Static QR codes do not have an expiration date. However, the information they contain must remain valid.',
   ],
   howTo: {
     heading: 'How to create a custom QR code',
-    intro: 'Generating a permanent, high-resolution QR code takes just three steps.',
+    intro: 'Generating a high-resolution static QR code takes just three steps.',
     steps: [
       {
         name: 'Choose your QR code type',
@@ -39,7 +39,7 @@ export const qrCodeGeneratorContent: ToolContent = {
     items: [
       {
         title: 'Static codes without redirect expiration',
-        text: 'The QR code itself does not expire when generated as a static QR code, but the destination or information encoded in it must remain valid.',
+        text: 'Static QR codes do not have an expiration date. However, the information they contain must remain valid.',
       },
       {
         title: 'Scalable vector SVG & high-res PNG',
@@ -63,7 +63,7 @@ export const qrCodeGeneratorContent: ToolContent = {
     heading: 'Your QR code data never touches a server',
     paragraphs: [
       'Many third-party QR code generators route every scan through proprietary redirect servers so they can collect user analytics, serve advertisements, or charge subscription fees to keep the code active.',
-      'Toolino produces true static QR codes directly in your browser using pure client-side mathematical algorithms. The data you enter is baked permanently into the black-and-white grid pattern.',
+      'Toolino produces true static QR codes directly in your browser using pure client-side mathematical algorithms. The data you enter is encoded directly into the black-and-white grid pattern.',
       'We do not capture your Wi-Fi credentials, personal phone numbers, or private URLs. The resulting code belongs completely to you.',
     ],
   },
@@ -80,7 +80,7 @@ export const qrCodeGeneratorContent: ToolContent = {
     {
       question: 'Do these QR codes expire?',
       answer:
-        'The QR code itself does not expire when generated as a static QR code, because data is encoded directly into the matrix without middleman tracking URLs. However, the destination URL, phone number, Wi-Fi password, or target info must remain active.',
+        'Static QR codes do not have an expiration date, because data is encoded directly into the matrix without middleman tracking URLs. However, the destination URL, phone number, Wi-Fi password, or target information encoded in it must remain active.',
     },
     {
       question: 'Can I use these QR codes for commercial projects?',

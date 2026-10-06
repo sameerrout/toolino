@@ -53,8 +53,14 @@ export default function PrivacyPolicyPage() {
               apply to uploaded files simply do not arise.
             </p>
             <p>
-              You can contact us about anything on this page at{' '}
-              <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>.
+              You can contact us about anything on this page through our{' '}
+              <Link href="/contact/">contact page</Link>
+              {BRAND.email ? (
+                <>
+                  {' '}or by email at <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>
+                </>
+              ) : null}
+              .
             </p>
 
             <h2>Your files</h2>
@@ -181,9 +187,14 @@ export default function PrivacyPolicyPage() {
               would otherwise hold.
             </p>
             <p>
-              To exercise any right, email <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>. You
-              also have the right to complain to your national supervisory authority; in the UK that is
-              the Information Commissioner&rsquo;s Office.
+              To exercise any right, submit a request via our{' '}
+              <Link href="/contact/">contact page</Link>
+              {BRAND.email ? (
+                <>
+                  {' '}or email <a href={`mailto:${BRAND.email}`}>{BRAND.email}</a>
+                </>
+              ) : null}
+              . You also have the right to complain to your national supervisory authority; in the UK that is the Information Commissioner&rsquo;s Office.
             </p>
 
             <h2>Legal bases</h2>

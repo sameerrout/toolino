@@ -9,12 +9,15 @@
 
 /**
  * Configurable support email address.
- * Reads from `NEXT_PUBLIC_SUPPORT_EMAIL`. If not configured, defaults to a clearly marked
- * placeholder so we never falsely claim domain ownership before official setup.
+ * Reads from `NEXT_PUBLIC_SUPPORT_EMAIL`. If not set or if set to an example placeholder,
+ * returns null so the live website never displays a fake or placeholder email to visitors.
+ * When null, user interfaces gracefully fall back to our neutral on-site contact form.
  */
-export const SUPPORT_EMAIL = (
-  process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@example.com'
-).trim();
+const RAW_SUPPORT_EMAIL = (process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? '').trim();
+export const SUPPORT_EMAIL: string | null =
+  RAW_SUPPORT_EMAIL && !/(?:example|yourdomain)\.(?:com|org|net)/i.test(RAW_SUPPORT_EMAIL)
+    ? RAW_SUPPORT_EMAIL
+    : null;
 
 export const BRAND = {
   /** User-facing brand name. Used in titles, footer, JSON-LD, emails. */
@@ -24,7 +27,7 @@ export const BRAND = {
   /** Longer positioning line used on the homepage and in the Organization schema. */
   description:
     'Free, fast, and privacy-conscious online tools. Convert, edit, and optimize PDFs, images, and documents easily inside your browser without uploading files to servers.',
-  /** Public contact address for the Contact page and legal notices (centralized). */
+  /** Public contact address for the Contact page and legal notices (null if not yet set). */
   email: SUPPORT_EMAIL,
   /** Postal-style locality used in legal pages (kept generic on purpose). */
   jurisdiction: 'England and Wales',

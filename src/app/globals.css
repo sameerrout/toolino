@@ -53,38 +53,31 @@
    ========================================================================== */
 @layer components {
   /* Long-form SEO prose. Applied to the content block under every tool. */
-  .prose-toolino,
-  .prose-toolnova {
+  .prose-toolino {
     @apply max-w-prose text-[0.9375rem] leading-7 text-slate-700;
   }
 
-  .prose-toolino h2,
-  .prose-toolnova h2 {
+  .prose-toolino h2 {
     @apply mt-10 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl;
   }
 
-  .prose-toolino h3,
-  .prose-toolnova h3 {
+  .prose-toolino h3 {
     @apply mt-6 text-base font-semibold text-slate-900;
   }
 
-  .prose-toolino p,
-  .prose-toolnova p {
+  .prose-toolino p {
     @apply mt-4;
   }
 
-  .prose-toolino ul,
-  .prose-toolnova ul {
+  .prose-toolino ul {
     @apply mt-4 space-y-2 pl-5;
   }
 
-  .prose-toolino li,
-  .prose-toolnova li {
+  .prose-toolino li {
     @apply list-disc;
   }
 
-  .prose-toolino a,
-  .prose-toolnova a {
+  .prose-toolino a {
     @apply font-medium text-brand-700 underline underline-offset-2 hover:text-brand-800;
   }
 

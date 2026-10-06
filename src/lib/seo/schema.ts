@@ -49,7 +49,7 @@ export function organizationSchema(): JsonLdNode {
     name: BRAND.name,
     url: `${SITE_URL}/`,
     description: BRAND.description,
-    email: BRAND.email,
+    ...(BRAND.email ? { email: BRAND.email } : {}),
     logo: {
       '@type': 'ImageObject',
       url: absoluteUrl('/icon-512.png'),
@@ -60,7 +60,7 @@ export function organizationSchema(): JsonLdNode {
       {
         '@type': 'ContactPoint',
         contactType: 'customer support',
-        email: BRAND.email,
+        ...(BRAND.email ? { email: BRAND.email } : {}),
         url: absoluteUrl('/contact/'),
         availableLanguage: ['English'],
       },
