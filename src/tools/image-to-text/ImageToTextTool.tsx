@@ -56,15 +56,23 @@ export function ImageToTextTool() {
 
       let worker: Awaited<ReturnType<typeof createWorker>> | null = null;
       try {
-        worker = await createWorker(language, 1, {
-          logger: (m: { status?: string; progress?: number }) => {
-            if (m.status === 'recognizing text') {
-              reporter.report(0.2 + 0.75 * (m.progress || 0), `Scanning text: ${Math.round((m.progress || 0) * 100)}%`);
-            } else if (m.status) {
-              reporter.report(0.15, `Initializing ${m.status}...`);
-            }
-          },
-        });
+        try {
+          worker = await createWorker(language, 1, {
+            logger: (m: { status?: string; progress?: number }) => {
+              if (m.status === 'recognizing text') {
+                reporter.report(0.2 + 0.75 * (m.progress || 0), `Scanning text: ${Math.round((m.progress || 0) * 100)}%`);
+              } else if (m.status) {
+                reporter.report(0.15, `Preparing OCR (${m.status})...`);
+              }
+            },
+          });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch')) {
+            throw new Error('Unable to load the OCR language model. Please check your internet connection and try again.');
+          }
+          throw new Error(msg || 'Unable to initialize OCR engine.');
+        }
 
         reporter.beginStage('Extracting character matrix', 0.9);
         const { data } = await worker.recognize(file);
@@ -123,11 +131,16 @@ export function ImageToTextTool() {
       )}
 
       {running && (
-        <ProgressPanel
-          progress={progress}
-          status={status}
-          onCancel={cancel}
-        />
+        <div className="space-y-3">
+          <ProgressPanel
+            progress={progress}
+            status={status}
+            onCancel={cancel}
+          />
+          <p className="text-center text-xs text-slate-500">
+            Initial run downloads the language OCR model and caches it locally in your browser.
+          </p>
+        </div>
       )}
 
       {error && (

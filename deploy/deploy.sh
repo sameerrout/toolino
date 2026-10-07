@@ -37,7 +37,7 @@ BUCKET="${BUCKET:-}"
 DISTRIBUTION_ID="${DISTRIBUTION_ID:-}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 OUT_DIR="${OUT_DIR:-out}"
-SITE_URL="${NEXT_PUBLIC_SITE_URL:-https://toolino-one.vercel.app}"
+SITE_URL="${NEXT_PUBLIC_SITE_URL:-https://toolino-iota.vercel.app}"
 
 if [[ -z "$BUCKET" ]]; then
   echo "error: BUCKET is not set." >&2

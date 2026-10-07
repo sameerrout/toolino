@@ -56,14 +56,21 @@ export function ProtectPdfTool() {
     [limits]
   );
 
+  const [validationError, setValidationError] = useState<string | null>(null);
+
   const handleProtect = async () => {
     if (!file) return;
+    setValidationError(null);
+    if (!password) {
+      setValidationError('Please enter a password.');
+      return;
+    }
     if (password.length < 4) {
-      alert('Password must be at least 4 characters.');
+      setValidationError('Password must be at least 4 characters long.');
       return;
     }
     if (password !== confirmPassword) {
-      alert('Passwords do not match.');
+      setValidationError('Passwords do not match. Please re-enter.');
       return;
     }
 
@@ -107,6 +114,7 @@ export function ProtectPdfTool() {
     setPageCount(0);
     setPassword('');
     setConfirmPassword('');
+    setValidationError(null);
     setResultBlob(null);
     setResultUrl(null);
   };
@@ -231,11 +239,16 @@ export function ProtectPdfTool() {
             </div>
           </div>
 
+          {validationError && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-700 font-medium">
+              {validationError}
+            </div>
+          )}
+
           <div className="flex justify-end pt-2">
             <button
               type="button"
               onClick={handleProtect}
-              disabled={password.length < 4 || password !== confirmPassword}
               className="btn-primary gap-2"
             >
               <Lock className="h-4 w-4" />

@@ -19,13 +19,14 @@ interface CountryPreset {
 }
 
 const PRESETS: CountryPreset[] = [
-  { id: 'us', name: 'United States (2 × 2 in)', widthMm: 51, heightMm: 51, widthPx: 600, heightPx: 600 },
+  { id: 'us', name: 'United States (2 × 2 in / 51 × 51 mm)', widthMm: 51, heightMm: 51, widthPx: 600, heightPx: 600 },
   { id: 'uk', name: 'United Kingdom (35 × 45 mm)', widthMm: 35, heightMm: 45, widthPx: 413, heightPx: 531 },
   { id: 'eu', name: 'Schengen / EU (35 × 45 mm)', widthMm: 35, heightMm: 45, widthPx: 413, heightPx: 531 },
   { id: 'in', name: 'India Passport (35 × 45 mm)', widthMm: 35, heightMm: 45, widthPx: 413, heightPx: 531 },
   { id: 'in-oci', name: 'India OCI / Visa (2 × 2 in)', widthMm: 51, heightMm: 51, widthPx: 600, heightPx: 600 },
   { id: 'ca', name: 'Canada (50 × 70 mm)', widthMm: 50, heightMm: 70, widthPx: 590, heightPx: 827 },
   { id: 'au', name: 'Australia (35 × 45 mm)', widthMm: 35, heightMm: 45, widthPx: 413, heightPx: 531 },
+  { id: 'generic', name: 'Generic Standard (35 × 45 mm)', widthMm: 35, heightMm: 45, widthPx: 413, heightPx: 531 },
 ];
 
 export function PassportPhotoTool() {
@@ -181,7 +182,13 @@ export function PassportPhotoTool() {
       )}
 
       {file && !singleUrl && !running && (
-        <div className="grid gap-6 lg:grid-cols-12">
+        <>
+          <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
+            <span className="font-semibold shrink-0">Official Notice:</span>
+            <span>Photo requirements vary by country and issuing authority. Check the official requirements before submitting your photo.</span>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-12">
           {/* Settings Card */}
           <div className="card space-y-4 lg:col-span-7">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
@@ -338,7 +345,8 @@ export function PassportPhotoTool() {
             </p>
           </div>
         </div>
-      )}
+      </>
+    )}
 
       {/* Result View */}
       {singleUrl && sheetUrl && (

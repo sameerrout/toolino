@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = join(ROOT, 'public');
 const MANIFEST_PATH = join(PUBLIC_DIR, '_redirects.json');
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '') || 'https://toolino-one.vercel.app';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '') || 'https://toolino-iota.vercel.app';
 
 /**
  * Legacy paths that belong to the site rather than to a single tool: removed
@@ -59,6 +59,7 @@ const SITE_REDIRECTS = [
   { from: '/document-tools', to: '/tools/pdf-tools/' },
   { from: '/utility-tools', to: '/tools/calculators/' },
   { from: '/qr-tools', to: '/tools/qr-code-generator/' },
+  { from: '/guides', to: '/blog/' },
 ];
 
 /**

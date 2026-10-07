@@ -97,10 +97,21 @@ export default function HomePage() {
             All-in-One Free Online Tools
           </h1>
 
-          <p className="mb-10 text-base sm:text-lg text-blue-100 max-w-2xl mx-auto leading-relaxed">
-            Choose from browser-based tools and fast client-side utilities. Your files are processed
+          <p className="mb-8 text-base sm:text-lg text-blue-100 max-w-2xl mx-auto leading-relaxed">
+            Choose from {TOOL_REGISTRY.length} free browser-based tools and fast client-side utilities. Your files are processed
             locally in your browser, so they do not need to be uploaded to our servers.
           </p>
+
+          {/* Primary CTA */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
+            <Link
+              href="/tools/"
+              className="px-6 py-3.5 bg-white text-blue-700 font-bold rounded-xl hover:bg-blue-50 transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base inline-flex items-center gap-2 cursor-pointer"
+            >
+              <span>Explore All {TOOL_REGISTRY.length} Tools</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
 
           {/* Search bar */}
           <form action="/tools/" method="GET" className="flex justify-center max-w-2xl mx-auto">

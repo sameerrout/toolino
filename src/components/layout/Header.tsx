@@ -122,6 +122,17 @@ export function Header() {
                             </Link>
                           </li>
                         ))}
+                        {tools.length > 6 && (
+                          <li>
+                            <Link
+                              href={`/tools/${slug}/`}
+                              onClick={() => setToolsDropdownOpen(false)}
+                              className="block py-1 text-xs text-blue-600 font-medium hover:underline"
+                            >
+                              View all {tools.length} →
+                            </Link>
+                          </li>
+                        )}
                       </ul>
                     </div>
                   );
@@ -149,6 +160,13 @@ export function Header() {
             className={`transition ${pathname === '/about/' ? 'text-blue-600 font-semibold' : 'hover:text-blue-600'}`}
           >
             About
+          </Link>
+
+          <Link
+            href="/contact/"
+            className={`transition ${pathname === '/contact/' ? 'text-blue-600 font-semibold' : 'hover:text-blue-600'}`}
+          >
+            Contact
           </Link>
         </nav>
 

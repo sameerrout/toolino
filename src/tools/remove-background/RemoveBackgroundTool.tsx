@@ -37,25 +37,37 @@ export function RemoveBackgroundTool() {
     if (!file) return;
 
     const res = await run(async (reporter) => {
-      reporter.beginStage('Downloading AI model (one time only, cached locally)', 0.3);
+      reporter.beginStage('Preparing AI model (downloaded once and cached locally)', 0.2);
 
-      // Dynamically import the heavy background removal library only when requested
-      const { removeBackground } = await import('@imgly/background-removal');
+      let removeBackground;
+      try {
+        const mod = await import('@imgly/background-removal');
+        removeBackground = mod.removeBackground;
+      } catch {
+        throw new Error('Unable to load background removal library. Please check your internet connection and try again.');
+      }
 
       reporter.beginStage('Analyzing subject and removing background', 0.85);
 
-      const blob = await removeBackground(file, {
-        progress: (key: string, current: number, total: number) => {
-          if (total > 0) {
-            reporter.report(
-              0.3 + 0.6 * (current / total),
-              `Processing ${key.replace(/^fetch:/, 'model ')}...`
-            );
-          }
-        },
-      });
-
-      return blob;
+      try {
+        const blob = await removeBackground(file, {
+          progress: (key: string, current: number, total: number) => {
+            if (total > 0) {
+              reporter.report(
+                0.2 + 0.7 * (current / total),
+                `Processing ${key.replace(/^fetch:/, 'model ')}...`
+              );
+            }
+          },
+        });
+        return blob;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network')) {
+          throw new Error('Unable to download AI model files from CDN. Please check your internet connection and try again.');
+        }
+        throw new Error(msg || 'Failed to remove image background.');
+      }
     });
 
     if (res) {
@@ -79,7 +91,7 @@ export function RemoveBackgroundTool() {
           onFiles={handleFile}
           accept="image/jpeg,image/png,image/webp,image/avif"
           label="Drop an image here to remove background"
-          hint="AI-powered background removal runs 100% inside your browser. No files uploaded."
+          hint="AI-powered background removal processes your image locally in your browser. No files are uploaded to any server."
           disabled={running}
         />
       )}

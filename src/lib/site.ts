@@ -37,7 +37,7 @@ export const BRAND = {
 
 /** Trailing-slash-free canonical origin. Configurable via NEXT_PUBLIC_SITE_URL. */
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://toolino-one.vercel.app'
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://toolino-iota.vercel.app'
 ).replace(/\/+$/, '');
 
 /** Builds an absolute URL for a site-relative path. */

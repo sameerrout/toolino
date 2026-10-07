@@ -110,7 +110,7 @@ const nextConfig = {
       { source: '/document-tools', destination: '/tools/pdf-tools/', permanent: true },
       { source: '/pdf-tools', destination: '/tools/pdf-tools/', permanent: true },
       { source: '/image-tools', destination: '/tools/image-tools/', permanent: true },
-      { source: '/utility-tools', destination: '/tools/utility-tools/', permanent: true },
+      { source: '/utility-tools', destination: '/tools/calculators/', permanent: true },
       { source: '/file-tools', destination: '/tools/file-tools/', permanent: true },
       { source: '/text-tools', destination: '/tools/text-tools/', permanent: true },
 
@@ -138,6 +138,7 @@ const nextConfig = {
       // Legacy unused paths
       { source: '/dashboard', destination: '/', permanent: true },
       { source: '/download', destination: '/', permanent: true },
+      { source: '/guides', destination: '/blog/', permanent: true },
     ];
   },
 };
