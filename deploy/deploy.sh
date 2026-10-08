@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Toolino — deploy the static export to S3 + CloudFront.
+# ToolForForever — deploy the static export to S3 + CloudFront.
 #
 # Usage:
 #   ./deploy/deploy.sh                    # uses values from .env.deploy
@@ -50,7 +50,7 @@ if [[ -z "$DISTRIBUTION_ID" ]]; then
   echo "         HTML is uploaded with a short cache, so changes still appear within 5 minutes." >&2
 fi
 
-echo "==> Toolino deploy"
+echo "==> ToolForForever deploy"
 echo "    bucket         : $BUCKET"
 echo "    distribution   : ${DISTRIBUTION_ID:-<not set>}"
 echo "    region         : $AWS_REGION"

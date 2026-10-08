@@ -11,14 +11,14 @@ import { websiteSchema, organizationSchema } from '@/lib/seo/schema';
 import { BRAND } from '@/lib/site';
 
 /**
- * Toolino Homepage (Server Component).
+ * ToolForForever Homepage (Server Component).
  *
- * Official Toolino visual design:
+ * Official ToolForForever visual design:
  * - Animated wave hero section with blue gradient
- * - Signature Toolino search bar
+ * - Signature ToolForForever search bar
  * - Original card styling with emoji badges, hover lift, and blue accents
  * - Full categorized tools directory
- * - "Why Choose Toolino" value propositions
+ * - "Why Choose ToolForForever" value propositions
  *
  * Kept as a Server Component to ensure zero unnecessary JavaScript overhead
  * and lightning-fast LCP (< 1.5s).
@@ -30,7 +30,7 @@ export const metadata: Metadata = buildMetadata({
   path: '/',
   keywords: [
     'free online tools',
-    'Toolino',
+    'ToolForForever',
     'browser based tools',
     'create zip online',
     'merge pdf free',
@@ -39,7 +39,7 @@ export const metadata: Metadata = buildMetadata({
   ],
 });
 
-// Signature Toolino tool icon mapping
+// Signature ToolForForever tool icon mapping
 const TOOL_ICONS: Record<string, string> = {
   'create-zip': '📦',
   'extract-zip': '📂',
@@ -224,12 +224,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Why Choose Toolino Section */}
+      {/* Why Choose ToolForForever Section */}
       <section className="py-16 bg-white border-t border-slate-200/80">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              Why Users Choose Toolino
+              Why Users Choose ToolForForever
             </h2>
             <p className="text-slate-600 text-sm mt-2">
               Engineered with a client-first philosophy so your sensitive documents stay private.

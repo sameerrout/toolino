@@ -9,7 +9,7 @@ import { AD_SLOTS } from '@/components/tools/ToolPage';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { breadcrumbSchema, webPageSchema } from '@/lib/seo/schema';
 import { formatDate } from '@/lib/format';
-import { BRAND } from '@/lib/site';
+import { BRAND, absoluteUrl } from '@/lib/site';
 import { getPostsByDate } from '@/content/blog';
 
 export const metadata: Metadata = buildMetadata({
@@ -42,7 +42,7 @@ export default function BlogIndexPage() {
             name: `${BRAND.name} guides`,
             description:
               'Practical guides about file formats, compression and privacy, written for people who want to understand the trade-offs rather than just click a button.',
-            url: `${BRAND.name} /blog/`,
+            url: absoluteUrl('/blog/'),
             blogPost: posts.map((post) => ({
               '@type': 'BlogPosting',
               headline: post.headline,
@@ -97,7 +97,7 @@ export default function BlogIndexPage() {
       </Container>
 
       <Container className="pb-14">
-        <div className="prose-toolino max-w-3xl">
+        <div className="prose-toolforforever max-w-3xl">
           <h2>What these guides are for</h2>
           <p>
             Most &ldquo;how to&rdquo; articles about file formats are written to rank rather than to

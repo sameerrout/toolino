@@ -86,7 +86,7 @@ export function LoginForm() {
               Welcome back
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-slate-500">
-              Sign in to your Toolino account to continue
+              Sign in to your ToolForForever account to continue
             </p>
           </div>
 

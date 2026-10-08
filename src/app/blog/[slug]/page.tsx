@@ -117,13 +117,13 @@ export default async function BlogPostPage({ params }: RouteParams) {
 
           <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <div>
-              <div className="prose-toolino">
+              <div className="prose-toolforforever">
                 <Article />
               </div>
 
               <AdSlot slot={AD_SLOTS.inArticle} format="horizontal" />
 
-              <div className="prose-toolino max-w-3xl">
+              <div className="prose-toolforforever max-w-3xl">
                 <h2>Tools mentioned in this guide</h2>
                 <p>
                   Each of these runs in your browser. Nothing is uploaded, and none of them asks you

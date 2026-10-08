@@ -4,7 +4,7 @@ This is the primary and recommended deployment. It serves the site as static fil
 from S3 through CloudFront, which for a site with no backend is both the cheapest
 and the fastest option available on AWS.
 
-**Why it fits this project:** Toolino has client-side processing. There is no
+**Why it fits this project:** ToolForForever has client-side processing. There is no
 API route, no database, no session and no job queue needed for static delivery. That means there is nothing
 to run on a server, so there is nothing to pay for beyond storage and bandwidth,
 and nothing to patch.
@@ -133,8 +133,8 @@ Replace `CERTIFICATE_ARN` with the ARN from step 2.
 ```bash
 cat > /tmp/dist-config.json <<JSON
 {
-  "CallerReference": "toolino-$(date +%s)",
-  "Comment": "Toolino static site",
+  "CallerReference": "toolforforever-$(date +%s)",
+  "Comment": "ToolForForever static site",
   "Enabled": true,
   "DefaultRootObject": "index.html",
   "Aliases": { "Quantity": 2, "Items": ["$DOMAIN", "www.$DOMAIN"] },
@@ -239,7 +239,7 @@ export CF_DOMAIN=$(aws cloudfront get-distribution \
 
 cat > /tmp/route53.json <<JSON
 {
-  "Comment": "Toolino apex and www to CloudFront",
+  "Comment": "ToolForForever apex and www to CloudFront",
   "Changes": [
     {
       "Action": "UPSERT",

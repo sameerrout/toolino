@@ -62,7 +62,7 @@ export const wordCounterContent: ToolContent = {
   privacy: {
     heading: 'Your writing stays entirely on your device',
     paragraphs: [
-      'Every character you type is evaluated directly inside your web browser’s JavaScript memory. Toolino is a static web application with no server backend processing or draft databases.',
+      'Every character you type is evaluated directly inside your web browser’s JavaScript memory. ToolForForever is a static web application with no server backend processing or draft databases.',
       'We do not capture your keystrokes, train machine learning models on your prose, or save your text to cookies or remote databases.',
       'When you close or refresh your browser tab, your text is completely erased from your browser’s temporary memory.',
     ],

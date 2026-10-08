@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Toolino Contact Form.
+ * ToolForForever Contact Form.
  *
  * Submits inquiries directly to the secure backend storage so that
  * authorized administrators can review, reply, and manage messages
@@ -99,7 +99,7 @@ export function ContactForm() {
     <div className="card">
       <h2 className="text-lg font-semibold text-slate-900">Send us a message</h2>
       <p className="mt-1 text-sm text-slate-600">
-        Fill out the form below to reach the Toolino support team. All messages are securely routed directly to our administrators.
+        Fill out the form below to reach the ToolForForever support team. All messages are securely routed directly to our administrators.
       </p>
 
       {success && (

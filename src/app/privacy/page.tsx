@@ -5,9 +5,9 @@ import { BRAND } from '@/lib/site';
 
 const META: LegalPageMeta = {
   title: 'Privacy Policy',
-  metaTitle: 'Privacy Policy — What Toolino Stores and What It Does Not',
+  metaTitle: `Privacy Policy — What ${BRAND.name} Stores and What It Does Not`,
   metaDescription:
-    'How Toolino handles your data: files are processed in your browser and never uploaded, plus what cookies we set, how to opt out of ads, and your GDPR rights.',
+    `How ${BRAND.name} handles your data: files are processed in your browser and never uploaded, plus what cookies we set, how to opt out of ads, and your GDPR rights.`,
   path: '/privacy/',
   updated: '2026-01-05',
   intro:

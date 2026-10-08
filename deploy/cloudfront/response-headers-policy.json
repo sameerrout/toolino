@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "CloudFront Response Headers Policy for Toolino.",
+    "CloudFront Response Headers Policy for ToolForForever.",
     "",
     "Apply it with:",
     "  aws cloudfront create-response-headers-policy --response-headers-policy-config file://deploy/cloudfront/response-headers-policy.json",
@@ -16,7 +16,7 @@
     "    and GA4 both require. Nothing else third-party is permitted."
   ],
   "Name": "toolino-security-headers",
-  "Comment": "HSTS, nosniff, referrer policy, permissions policy, frame options and CSP for Toolino",
+  "Comment": "HSTS, nosniff, referrer policy, permissions policy, frame options and CSP for ToolForForever",
   "SecurityHeadersConfig": {
     "XSSProtection": {
       "Override": true,

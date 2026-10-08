@@ -5,7 +5,7 @@ export const emiCalculatorContent: ToolContent = {
   overview: [
     'This loan EMI (Equated Monthly Installment) calculator computes estimated monthly loan repayments, total interest payable, and overall loan cost for home loans, car loans, personal loans, and education loans. It uses the standard reducing-balance amortization method utilized by banks and commercial lenders worldwide.',
     'It provides both monthly and yearly amortization schedules, illustrating how each monthly payment is split between principal repayment and interest charges over the full loan tenure.',
-    'All calculations happen locally in your browser. Unlike banking portals that require your phone number or email before showing repayment estimates, Toolino requires zero personal data, login, or phone number.',
+    'All calculations happen locally in your browser. Unlike banking portals that require your phone number or email before showing repayment estimates, ToolForForever requires zero personal data, login, or phone number.',
   ],
   howTo: {
     heading: 'How to calculate your monthly loan EMI',
@@ -63,7 +63,7 @@ export const emiCalculatorContent: ToolContent = {
     heading: 'Your loan calculations are completely confidential',
     paragraphs: [
       'Financial lead generation websites routinely capture loan amounts, loan types, and IP addresses to sell as qualified borrower leads to banks and credit brokers, triggering aggressive telemarketing calls.',
-      'Toolino does not collect, record, or transmit your financial calculations. All mathematical algorithms execute inside your web browser’s JavaScript engine.',
+      'ToolForForever does not collect, record, or transmit your financial calculations. All mathematical algorithms execute inside your web browser’s JavaScript engine.',
       'Your borrowing plans remain strictly confidential.',
     ],
   },

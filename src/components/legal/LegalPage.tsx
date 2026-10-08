@@ -66,7 +66,7 @@ export function LegalPage({
         <p className="mt-5 text-lg text-slate-600">{meta.intro}</p>
       </div>
 
-      <div className="prose-toolino mt-10 max-w-3xl">{children}</div>
+      <div className="prose-toolforforever mt-10 max-w-3xl">{children}</div>
 
       <div className="mt-12 max-w-3xl rounded-2xl border border-slate-200 bg-slate-50 p-5">
         <h2 className="text-base font-semibold text-slate-900">Questions about this page</h2>

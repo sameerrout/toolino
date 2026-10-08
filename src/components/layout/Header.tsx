@@ -10,9 +10,9 @@ import { getToolsByCategory } from '@/data/toolRegistry';
 import { toolPath } from '@/lib/tools';
 
 /**
- * Toolino Header Navigation.
+ * ToolForForever Header Navigation.
  *
- * Official Toolino clean white navbar with blue-600 accents,
+ * Official ToolForForever clean white navbar with blue-600 accents,
  * clear typography, category dropdown, and mobile navigation drawer.
  */
 export function Header() {

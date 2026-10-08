@@ -5,9 +5,9 @@ import { BRAND } from '@/lib/site';
 
 const META: LegalPageMeta = {
   title: 'Cookie Policy',
-  metaTitle: 'Cookie Policy — The Cookies Toolino Sets and How to Refuse',
+  metaTitle: `Cookie Policy — The Cookies ${BRAND.name} Sets and How to Refuse`,
   metaDescription:
-    'Every cookie and local storage item Toolino may set, who sets it, why, and how long it lasts, plus how to refuse cookies and still use every tool.',
+    `Every cookie and local storage item ${BRAND.name} may set, who sets it, why, and how long it lasts, plus how to refuse cookies and still use every tool.`,
   path: '/cookies/',
   updated: '2026-01-05',
   intro:
@@ -60,7 +60,7 @@ export default function CookiePolicyPage() {
             <tbody>
               <tr>
                 <td className="border-b border-slate-100 px-3 py-2 align-top text-slate-700">
-                  <code>toolino.consent.v1</code>
+                  <code>toolforforever.consent.v1</code>
                 </td>
                 <td className="border-b border-slate-100 px-3 py-2 align-top text-slate-700">
                   {BRAND.name}
@@ -183,7 +183,7 @@ export default function CookiePolicyPage() {
 
         <h3>Strictly necessary</h3>
         <p>
-          The only entry here is <code>toolino.consent.v1</code>, which we write to local storage
+          The only entry here is <code>toolforforever.consent.v1</code>, which we write to local storage
           rather than as a cookie. It records two booleans, one for analytics and one for advertising,
           plus the time of your decision and a version number. It carries no identifier and is never
           sent to us. We treat it as strictly necessary because without it we could not remember a

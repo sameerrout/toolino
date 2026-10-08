@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
 
 export const metadata: Metadata = {
-  title: 'Forgot Password - Toolino',
-  description: 'Reset your Toolino account password.',
+  title: 'Forgot Password - ToolForForever',
+  description: 'Reset your ToolForForever account password.',
 };
 
 export default function ForgotPasswordPage() {

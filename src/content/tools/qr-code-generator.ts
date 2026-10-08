@@ -34,7 +34,7 @@ export const qrCodeGeneratorContent: ToolContent = {
     ],
   },
   benefits: {
-    heading: 'Why create QR codes with Toolino',
+    heading: 'Why create QR codes with ToolForForever',
     intro: 'Designed for business owners, marketers, event organizers, and graphic designers.',
     items: [
       {
@@ -63,7 +63,7 @@ export const qrCodeGeneratorContent: ToolContent = {
     heading: 'Your QR code data never touches a server',
     paragraphs: [
       'Many third-party QR code generators route every scan through proprietary redirect servers so they can collect user analytics, serve advertisements, or charge subscription fees to keep the code active.',
-      'Toolino produces true static QR codes directly in your browser using pure client-side mathematical algorithms. The data you enter is encoded directly into the black-and-white grid pattern.',
+      'ToolForForever produces true static QR codes directly in your browser using pure client-side mathematical algorithms. The data you enter is encoded directly into the black-and-white grid pattern.',
       'We do not capture your Wi-Fi credentials, personal phone numbers, or private URLs. The resulting code belongs completely to you.',
     ],
   },

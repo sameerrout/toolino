@@ -52,7 +52,7 @@ function createZipWorker(): WorkerTask {
   return new WorkerTask(
     new Worker(new URL('./zipWorker.ts', import.meta.url), {
       type: 'module',
-      name: 'toolino-zip',
+      name: 'toolforforever-zip',
     })
   );
 }

@@ -1,4 +1,4 @@
-# Toolino AdSense publisher declaration
+# ToolForForever AdSense publisher declaration
 #
 # Replace pub-XXXXXXXXXXXXXXXX with your own AdSense publisher ID (it is the same
 # value you set in NEXT_PUBLIC_ADSENSE_CLIENT, without the "ca-" prefix) and

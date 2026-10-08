@@ -2,7 +2,7 @@
   "name": "toolino",
   "version": "2.0.0",
   "private": true,
-  "description": "Toolino - privacy-first online tools that run entirely in your browser. No uploads, no server processing.",
+  "description": "ToolForForever - privacy-first online tools that run entirely in your browser. No uploads, no server processing.",
   "license": "MIT",
   "engines": {
     "node": ">=20"

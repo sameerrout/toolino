@@ -1,5 +1,5 @@
 /**
- * Toolino - Database Migration Script
+ * ToolForForever - Database Migration Script
  * Migrates data from local db.json to PostgreSQL (Amazon RDS or configured DATABASE_URL)
  *
  * Usage:
@@ -17,7 +17,7 @@ const ROOT = path.join(__dirname, '..');
 const DB_FILE = path.join(ROOT, '.data', 'db.json');
 
 async function migrate() {
-  console.log('--- Toolino Database Migration ---');
+  console.log('--- ToolForForever Database Migration ---');
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {

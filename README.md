@@ -1,6 +1,6 @@
-# Toolino — High-Performance File Conversion & Utility Platform
+# ToolForForever — High-Performance File Conversion & Utility Platform
 
-Toolino is a privacy-conscious, high-performance web platform for everyday document transformation, formatting, presentation conversion, and utilities.
+ToolForForever is a privacy-conscious, high-performance web platform for everyday document transformation, formatting, presentation conversion, and utilities.
 
 It features an adaptive hybrid processing architecture: lightweight tools run client-side directly inside modern web browsers, while complex document conversions run through memory-efficient, sandboxed backend workers with dynamic resource management.
 
@@ -73,7 +73,7 @@ pip install -r backend/requirements.txt
 ```
 
 ### 3. Optional Native Engines
-- **Microsoft Office (Windows)**: If Microsoft Word and PowerPoint are installed, Toolino will automatically leverage native COM automation for high document fidelity.
+- **Microsoft Office (Windows)**: If Microsoft Word and PowerPoint are installed, ToolForForever will automatically leverage native COM automation for high document fidelity.
 - **LibreOffice (Cross-Platform)**: Install LibreOffice and ensure `soffice` is in PATH or configure `LIBREOFFICE_PATH` in `.env`.
 - **Tesseract OCR (Optional for Scanned Documents)**:
   - Windows: [Tesseract at UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki)

@@ -24,7 +24,7 @@ export function QrCodeGeneratorTool() {
 
   // Input states
   const [url, setUrl] = useState(SITE_URL);
-  const [plainText, setPlainText] = useState('Hello from Toolino!');
+  const [plainText, setPlainText] = useState('Hello from ToolForForever!');
   const [ssid, setSsid] = useState('');
   const [wifiPass, setWifiPass] = useState('');
   const [wifiAuth, setWifiAuth] = useState<'WPA' | 'WEP' | 'nopass'>('WPA');

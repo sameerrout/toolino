@@ -91,7 +91,7 @@ export function CategoryHubPage({ category }: { category: CategorySlug }) {
       </Container>
 
       <Container className="py-10">
-        <div className="prose-toolino max-w-3xl">
+        <div className="prose-toolforforever max-w-3xl">
           <h2>About these {meta.navLabel.toLowerCase()}</h2>
           {HUB_PROSE[category].map((paragraph) => (
             <p key={paragraph.slice(0, 40)}>{paragraph}</p>

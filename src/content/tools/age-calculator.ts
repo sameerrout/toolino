@@ -63,7 +63,7 @@ export const ageCalculatorContent: ToolContent = {
     heading: 'Your date of birth is never logged or stored',
     paragraphs: [
       'Dates of birth are frequently used as verification security questions and identity markers. Many free websites record birthdates and link them with IP addresses or cookies for advertising profiling.',
-      'Toolino evaluates all date calculations directly in your browser JavaScript environment. No network request is initiated when you calculate your age.',
+      'ToolForForever evaluates all date calculations directly in your browser JavaScript environment. No network request is initiated when you calculate your age.',
       'Nothing is stored in browser cookies or transmitted to our servers. When you leave the page, your birthdate is forgotten.',
     ],
   },
@@ -90,7 +90,7 @@ export const ageCalculatorContent: ToolContent = {
     {
       question: 'Why do different age calculators sometimes give different days?',
       answer:
-        'Some simple calculators approximate every month as 30 or 30.4 days, creating errors of 1 to 3 days. Toolino calculates exact calendar months based on the true number of days in each specific calendar month.',
+        'Some simple calculators approximate every month as 30 or 30.4 days, creating errors of 1 to 3 days. ToolForForever calculates exact calendar months based on the true number of days in each specific calendar month.',
     },
     {
       question: 'Is my birthdate saved or shared?',

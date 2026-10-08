@@ -16,7 +16,7 @@ import { TOOL_REGISTRY } from '@/data/toolRegistry';
 export const metadata: Metadata = buildMetadata({
   title: `All Free Online Tools — ${TOOL_REGISTRY.length} Browser-Based Utilities`,
   description:
-    'Every Toolino tool in one place: PDF editing, image compression, ZIP archives, OCR, background removal, text utilities and calculators. All free and none of them upload your files.',
+    'Every ToolForForever tool in one place: PDF editing, image compression, ZIP archives, OCR, background removal, text utilities and calculators. All free and none of them upload your files.',
   path: '/tools/',
   keywords: ['all online tools', 'free file tools', 'browser tools list', 'pdf and image tools'],
 });
@@ -106,7 +106,7 @@ export default function ToolsIndexPage() {
       })}
 
       <Container className="py-12">
-        <div className="prose-toolino max-w-3xl">
+        <div className="prose-toolforforever max-w-3xl">
           <h2>How to choose the right tool</h2>
           <p>
             If your goal is to make a file smaller, start with what the file actually is. A PDF that

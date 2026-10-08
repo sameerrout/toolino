@@ -170,7 +170,7 @@ export async function savePdf(
 }
 
 /** Identifies the tool as the producer without leaking a version string. */
-const PRODUCER = 'Toolino (browser-based, no upload)';
+const PRODUCER = 'ToolForForever (browser-based, no upload)';
 
 /** A safe, human-friendly output filename derived from an input filename. */
 export function outputNameFor(inputName: string, suffix: string, extension = 'pdf'): string {

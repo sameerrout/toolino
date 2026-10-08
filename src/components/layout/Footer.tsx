@@ -7,9 +7,9 @@ import { toolPath } from '@/lib/tools';
 import { ConsentSettingsLink } from '@/components/consent/ConsentSettingsLink';
 
 /**
- * Toolino Footer.
+ * ToolForForever Footer.
  *
- * Official Toolino deep blue theme (bg-blue-900 / border-blue-800),
+ * Official ToolForForever deep blue theme (bg-blue-900 / border-blue-800),
  * registry-driven category columns, legal compliance links, and copyright text.
  *
  * Every tool in the registry is discoverable from here: each category column
@@ -24,7 +24,7 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className="text-2xl font-extrabold tracking-tight text-white">
-                Toolino
+                ToolForForever
               </span>
             </div>
             <p className="text-blue-200 text-xs leading-relaxed">

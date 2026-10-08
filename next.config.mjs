@@ -1,5 +1,5 @@
 /**
- * Toolino - Next.js configuration
+ * ToolForForever - Next.js configuration
  *
  * Deployment target: Next.js Node.js server runtime for AWS deployment (ECS, App Runner, EC2, or Docker).
  * Fully supports dynamic server API routes (/api/auth/*, /api/manager/*, /api/analytics/*)

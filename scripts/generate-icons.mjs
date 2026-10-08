@@ -250,7 +250,7 @@ const INK = [15, 23, 42];
 const WHITE = [255, 255, 255];
 
 /**
- * Draws the Toolino mark: a document with a folded corner and a padlock,
+ * Draws the ToolForForever mark: a document with a folded corner and a padlock,
  * matching `src/components/layout/Logo.tsx`.
  */
 function drawMark(raster, size, offsetX = 0, offsetY = 0) {
@@ -326,7 +326,7 @@ function renderOgImage() {
   drawMark(raster, 168, margin, 68);
 
   // Wordmark beside the mark.
-  drawText(raster, 'TOOLINO', margin + 200, 104, 54, WHITE);
+  drawText(raster, 'TOOLFORFOREVER', margin + 200, 104, 54, WHITE);
 
   // Sub-line under the wordmark.
   drawText(raster, 'FREE BROWSER TOOLS', margin + 202, 176, 20, BRAND_LIGHT, 0.95);

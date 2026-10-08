@@ -1,5 +1,5 @@
 # =============================================================================
-# Toolino — alternative server deployment
+# ToolForForever — alternative server deployment
 # =============================================================================
 #
 # You do NOT need this file for the normal deployment. The site is a static
@@ -16,8 +16,8 @@
 #      deploy.
 #
 # Build and run locally:
-#   docker build -t toolino .
-#   docker run --rm -p 3000:3000 -e NEXT_PUBLIC_SITE_URL=http://localhost:3000 toolino
+#   docker build -t toolforforever .
+#   docker run --rm -p 3000:3000 -e NEXT_PUBLIC_SITE_URL=http://localhost:3000 toolforforever
 #
 # =============================================================================
 

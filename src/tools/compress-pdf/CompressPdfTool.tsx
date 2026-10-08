@@ -67,8 +67,8 @@ export function CompressPdfTool() {
       doc.setAuthor('');
       doc.setSubject('');
       doc.setKeywords([]);
-      doc.setProducer('Toolino Optimizer');
-      doc.setCreator('Toolino');
+      doc.setProducer('ToolForForever Optimizer');
+      doc.setCreator('ToolForForever');
 
       reporter.beginStage('Re-packing compressed streams', 0.9);
       const bytes = await doc.save({

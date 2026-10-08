@@ -34,7 +34,7 @@ export const passportPhotoContent: ToolContent = {
     ],
   },
   benefits: {
-    heading: 'Why prepare passport photos with Toolino',
+    heading: 'Why prepare passport photos with ToolForForever',
     intro: 'Designed for travellers, applicants, and families preparing passport and visa applications.',
     items: [
       {
@@ -63,7 +63,7 @@ export const passportPhotoContent: ToolContent = {
     heading: 'Your biometric portrait stays on your device',
     paragraphs: [
       'Facial images are biometric personal data. Many online photo editors upload portraits to remote cloud storage where they can be retained, analyzed, or fed into AI models without explicit user consent.',
-      'Toolino processes your portrait entirely within your browser using the HTML5 Canvas API. The image data is decoded into your device’s local memory and processed strictly on your CPU/GPU.',
+      'ToolForForever processes your portrait entirely within your browser using the HTML5 Canvas API. The image data is decoded into your device’s local memory and processed strictly on your CPU/GPU.',
       'No image data is ever uploaded across the network. When you close the tab, all image buffers are immediately cleared.',
     ],
   },

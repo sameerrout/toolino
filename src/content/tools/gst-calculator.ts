@@ -63,7 +63,7 @@ export const gstCalculatorContent: ToolContent = {
     heading: 'Your invoicing data remains strictly confidential',
     paragraphs: [
       'Business turnover, bill amounts, and transaction sizes are confidential commercial information that should never be leaked to third-party web apps.',
-      'Toolino computes all GST calculations directly in your browser. No HTTP requests are sent when you type amounts or change tax rates.',
+      'ToolForForever computes all GST calculations directly in your browser. No HTTP requests are sent when you type amounts or change tax rates.',
       'We do not store your invoice figures, customer bill amounts, or tax calculations.',
     ],
   },

@@ -19,10 +19,10 @@ export function GoogleAuthCard({ mode }: AuthCardProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const isSignIn = mode === 'signin';
-  const title = isSignIn ? 'Sign In to Toolino' : 'Welcome back to Toolino';
+  const title = isSignIn ? 'Sign In to ToolForForever' : 'Welcome back to ToolForForever';
   const subtitle = isSignIn
     ? 'Create your account using your email and password.'
-    : 'Log in to your Toolino account.';
+    : 'Log in to your ToolForForever account.';
 
   // Handle Email + Password Form Submission
   const handleEmailAuth = async (e: React.FormEvent) => {

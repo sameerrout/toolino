@@ -21,7 +21,7 @@ export const SUPPORT_EMAIL: string | null =
 
 export const BRAND = {
   /** User-facing brand name. Used in titles, footer, JSON-LD, emails. */
-  name: 'Toolino',
+  name: 'ToolForForever',
   /** Short tagline shown in the footer and the manifest. */
   tagline: 'All-in-One Free Online Tools',
   /** Longer positioning line used on the homepage and in the Organization schema. */

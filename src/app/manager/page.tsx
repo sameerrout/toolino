@@ -4,8 +4,8 @@ import { requireManagerSession } from '@/lib/auth';
 import { ManagerDashboard } from '@/components/manager/ManagerDashboard';
 
 export const metadata: Metadata = {
-  title: 'Manager Dashboard - Toolino',
-  description: 'Authorized management and statistics dashboard for Toolino.',
+  title: 'Manager Dashboard - ToolForForever',
+  description: 'Authorized management and statistics dashboard for ToolForForever.',
   robots: {
     index: false,
     follow: false,
