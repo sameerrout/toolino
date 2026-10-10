@@ -5,6 +5,10 @@ import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm';
 export const metadata: Metadata = {
   title: 'Reset Password - ToolForForever',
   description: 'Set a new password for your ToolForForever account.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function ResetPasswordPage() {

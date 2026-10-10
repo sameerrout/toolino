@@ -35,16 +35,35 @@ export const BRAND = {
   twitter: null as string | null,
 } as const;
 
-/** Trailing-slash-free canonical origin. Configurable via NEXT_PUBLIC_SITE_URL. */
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://toolino-iota.vercel.app'
-).replace(/\/+$/, '');
+/** Canonical production origin. */
+export const PRODUCTION_SITE_URL = 'https://www.toolforforever.com';
+
+/** Trailing-slash-free canonical origin. Configurable via NEXT_PUBLIC_SITE_URL with safe production fallback. */
+export const SITE_URL = (() => {
+  const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (
+    !envUrl ||
+    envUrl.includes('toolino-iota.vercel.app') ||
+    envUrl.includes('vercel.app') ||
+    envUrl.includes('toolnova') ||
+    envUrl.includes('localhost') ||
+    envUrl.includes('127.0.0.1')
+  ) {
+    return PRODUCTION_SITE_URL;
+  }
+  return envUrl.replace(/\/+$/, '');
+})();
 
 /** Builds an absolute URL for a site-relative path. */
 export function absoluteUrl(path = '/'): string {
   if (/^https?:\/\//i.test(path)) return path;
   const normalized = path.startsWith('/') ? path : `/${path}`;
   return `${SITE_URL}${normalized}`;
+}
+
+/** Alias for absoluteUrl with explicit semantic naming for canonical tags. */
+export function canonicalUrl(path = '/'): string {
+  return absoluteUrl(path);
 }
 
 /** AdSense publisher id, or an empty string when ads are disabled. */

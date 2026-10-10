@@ -5,6 +5,10 @@ import { LoginForm } from '@/components/auth/LoginForm';
 export const metadata: Metadata = {
   title: 'Sign In - ToolForForever',
   description: 'Log in to your ToolForForever account.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function LoginPage() {

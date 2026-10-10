@@ -23,7 +23,17 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = join(ROOT, 'public');
 const MANIFEST_PATH = join(PUBLIC_DIR, '_redirects.json');
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '') || 'https://toolino-iota.vercel.app';
+const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+const SITE_URL = (
+  envUrl &&
+  !envUrl.includes('toolino') &&
+  !envUrl.includes('vercel.app') &&
+  !envUrl.includes('toolnova') &&
+  !envUrl.includes('localhost') &&
+  !envUrl.includes('127.0.0.1')
+    ? envUrl
+    : 'https://www.toolforforever.com'
+).replace(/\/+$/, '');
 
 /**
  * Legacy paths that belong to the site rather than to a single tool: removed

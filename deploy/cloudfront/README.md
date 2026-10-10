@@ -64,7 +64,7 @@ Set these shell variables first; every command below uses them.
 ```bash
 export AWS_REGION=us-east-1
 export BUCKET=toolino-site
-export DOMAIN=toolino-one.vercel.app
+export DOMAIN=www.toolforforever.com
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ```
 

@@ -109,7 +109,7 @@ python tests/benchmark_converters.py # Performance and peak memory benchmark sui
 | Variable | Default | Purpose |
 | :--- | :---: | :--- |
 | `PORT` | `3000` | Application server port |
-| `NEXT_PUBLIC_SITE_URL` | `https://toolino-one.vercel.app` | Canonical base URL for SEO and sitemap |
+| `NEXT_PUBLIC_SITE_URL` | `https://www.toolforforever.com` | Canonical base URL for SEO and sitemap |
 | `TOOLINO_PYTHON_BIN` | `python` | Python executable name or path |
 | `TOOLINO_JOB_RETENTION_HOURS` | `1` | Hours before temporary job directories are purged |
 | `TOOLINO_MAX_WORKERS` | `0` (auto) | Maximum parallel worker processes |

@@ -5,6 +5,10 @@ import { SignUpForm } from '@/components/auth/SignUpForm';
 export const metadata: Metadata = {
   title: 'Sign Up - ToolForForever',
   description: 'Create your ToolForForever account.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function SignUpPage() {

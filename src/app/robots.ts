@@ -24,6 +24,9 @@ export default function robots(): MetadataRoute.Robots {
           '/go/',
           // Internal API routes
           '/api/',
+          // Private manager dashboards and administration
+          '/manager/',
+          '/admin/',
         ],
       },
       {

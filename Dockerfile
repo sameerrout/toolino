@@ -46,7 +46,7 @@ COPY . .
 # Build-time public configuration. These are inlined into the bundle, so they are
 # never secrets - and must NOT be swapped for real secrets here, because anything
 # passed as NEXT_PUBLIC_* ends up readable in the browser.
-ARG NEXT_PUBLIC_SITE_URL=https://toolino-iota.vercel.app
+ARG NEXT_PUBLIC_SITE_URL=https://www.toolforforever.com
 ARG NEXT_PUBLIC_ADSENSE_CLIENT=
 ARG NEXT_PUBLIC_GA_ID=
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL

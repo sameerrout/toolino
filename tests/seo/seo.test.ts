@@ -54,4 +54,84 @@ describe('SEO & Metadata Integrity Verification', () => {
       expect(content.privacy.paragraphs.length).toBeGreaterThanOrEqual(2);
     }
   });
+
+  it('verifies SITE_URL is strictly https://www.toolforforever.com', async () => {
+    const { SITE_URL, PRODUCTION_SITE_URL, canonicalUrl } = await import('@/lib/site');
+    expect(PRODUCTION_SITE_URL).toBe('https://www.toolforforever.com');
+    expect(SITE_URL).toBe('https://www.toolforforever.com');
+
+    expect(canonicalUrl('/')).toBe('https://www.toolforforever.com/');
+    expect(canonicalUrl('/tools/merge-pdf/')).toBe('https://www.toolforforever.com/tools/merge-pdf/');
+    expect(canonicalUrl('/blog/how-to-compress-pdf/')).toBe('https://www.toolforforever.com/blog/how-to-compress-pdf/');
+  });
+
+  it('generates sitemap with 100% production domain and zero legacy domains', async () => {
+    const sitemapModule = await import('@/app/sitemap');
+    const sitemap = sitemapModule.default();
+
+    expect(sitemap.length).toBeGreaterThanOrEqual(45);
+
+    // Verify all URLs use production domain
+    for (const entry of sitemap) {
+      expect(entry.url).toMatch(/^https:\/\/www\.toolforforever\.com(\/.*)?$/);
+      expect(entry.url).not.toContain('toolino-iota.vercel.app');
+      expect(entry.url).not.toContain('vercel.app');
+      expect(entry.url).not.toContain('localhost');
+      expect(entry.url.endsWith('/')).toBe(true);
+
+      // Verify no private or auth routes exist in sitemap
+      expect(entry.url).not.toContain('/manager');
+      expect(entry.url).not.toContain('/admin');
+      expect(entry.url).not.toContain('/signin');
+      expect(entry.url).not.toContain('/signup');
+      expect(entry.url).not.toContain('/login');
+      expect(entry.url).not.toContain('/forgot-password');
+      expect(entry.url).not.toContain('/reset-password');
+      expect(entry.url).not.toContain('/api/');
+    }
+
+    // Check specific essential pages are present
+    const urls = sitemap.map((e) => e.url);
+    expect(urls).toContain('https://www.toolforforever.com/');
+    expect(urls).toContain('https://www.toolforforever.com/tools/');
+    expect(urls).toContain('https://www.toolforforever.com/blog/');
+    expect(urls).toContain('https://www.toolforforever.com/about/');
+    expect(urls).toContain('https://www.toolforforever.com/contact/');
+    expect(urls).toContain('https://www.toolforforever.com/privacy/');
+    expect(urls).toContain('https://www.toolforforever.com/terms/');
+    expect(urls).toContain('https://www.toolforforever.com/cookies/');
+    expect(urls).toContain('https://www.toolforforever.com/disclaimer/');
+
+    // Check category hubs
+    expect(urls).toContain('https://www.toolforforever.com/tools/pdf-tools/');
+    expect(urls).toContain('https://www.toolforforever.com/tools/image-tools/');
+    expect(urls).toContain('https://www.toolforforever.com/tools/file-tools/');
+    expect(urls).toContain('https://www.toolforforever.com/tools/text-tools/');
+    expect(urls).toContain('https://www.toolforforever.com/tools/calculators/');
+
+    // Check sample tool and blog
+    expect(urls).toContain('https://www.toolforforever.com/tools/merge-pdf/');
+    expect(urls).toContain('https://www.toolforforever.com/blog/how-to-merge-pdfs-without-uploading-them/');
+  });
+
+  it('generates robots.txt referencing correct production sitemap and disallowing manager/admin', async () => {
+    const robotsModule = await import('@/app/robots');
+    const robots = robotsModule.default();
+
+    expect(robots.sitemap).toBe('https://www.toolforforever.com/sitemap.xml');
+    expect(robots.host).toBe('https://www.toolforforever.com');
+
+    const rules = Array.isArray(robots.rules) ? robots.rules : [robots.rules];
+    const userAgentRule = rules.find((r) => r.userAgent === '*');
+    expect(userAgentRule).toBeDefined();
+
+    const disallow = Array.isArray(userAgentRule?.disallow)
+      ? userAgentRule?.disallow
+      : [userAgentRule?.disallow];
+
+    expect(disallow).toContain('/manager/');
+    expect(disallow).toContain('/admin/');
+    expect(disallow).toContain('/api/');
+  });
 });
+
