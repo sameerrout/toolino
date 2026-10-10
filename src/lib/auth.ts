@@ -115,8 +115,24 @@ export function verifySessionToken(token: string | null | undefined): SessionDat
   }
 }
 
-export async function getServerSession(): Promise<SessionData | null> {
+export async function getServerSession(
+  req?: { cookies?: { get: (name: string) => { value: string } | undefined }; headers?: Headers } | null
+): Promise<SessionData | null> {
   try {
+    if (req) {
+      if (req.cookies && typeof req.cookies.get === 'function') {
+        const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+        if (token) return verifySessionToken(token);
+      }
+      if (req.headers && typeof req.headers.get === 'function') {
+        const cookieHeader = req.headers.get('cookie');
+        if (cookieHeader) {
+          const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE_NAME}=([^;]+)`));
+          if (match?.[1]) return verifySessionToken(decodeURIComponent(match[1]));
+        }
+      }
+    }
+
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
     return verifySessionToken(token);
@@ -125,8 +141,10 @@ export async function getServerSession(): Promise<SessionData | null> {
   }
 }
 
-export async function requireManagerSession(): Promise<SessionData | null> {
-  const session = await getServerSession();
+export async function requireManagerSession(
+  req?: { cookies?: { get: (name: string) => { value: string } | undefined }; headers?: Headers } | null
+): Promise<SessionData | null> {
+  const session = await getServerSession(req);
   if (!session || !isManagerEmail(session.email)) {
     return null;
   }
@@ -134,3 +152,4 @@ export async function requireManagerSession(): Promise<SessionData | null> {
 }
 
 export { SESSION_COOKIE_NAME };
+

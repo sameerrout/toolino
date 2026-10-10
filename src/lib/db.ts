@@ -4,6 +4,13 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { isManagerEmail } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
+import {
+  loadPersistedVisits,
+  persistNewVisitSync,
+  isRecentDuplicateVisit,
+  calculateVisitorAnalytics,
+} from '@/lib/analytics/visitsStore';
+import { REPORTING_TIMEZONE, getReportingDayBounds } from '@/lib/analytics/visitor';
 
 export interface UserRecord {
   id: string;
@@ -121,7 +128,8 @@ export function getDb(): DatabaseSchema {
           if (!parsed.toolUsage || typeof parsed.toolUsage !== 'object') parsed.toolUsage = {};
           if (!Array.isArray(parsed.events)) parsed.events = [];
           if (!Array.isArray(parsed.contactMessages)) parsed.contactMessages = [];
-          if (!Array.isArray(parsed.visits)) parsed.visits = [];
+          // Always use authoritative persisted visits
+          parsed.visits = loadPersistedVisits();
           globalForDb.__toolino_memory_db__ = parsed;
           return parsed;
         }
@@ -132,32 +140,49 @@ export function getDb(): DatabaseSchema {
   }
 
   if (!globalForDb.__toolino_memory_db__) {
-    globalForDb.__toolino_memory_db__ = { users: [], toolUsage: {}, events: [], contactMessages: [], visits: [] };
+    globalForDb.__toolino_memory_db__ = {
+      users: [],
+      toolUsage: {},
+      events: [],
+      contactMessages: [],
+      visits: loadPersistedVisits(),
+    };
+  } else {
+    globalForDb.__toolino_memory_db__.visits = loadPersistedVisits();
   }
   return globalForDb.__toolino_memory_db__;
 }
 
 export function saveDb(data: DatabaseSchema): void {
+  // Ensure visits array in saveDb is authoritative and never overwritten by stale state
+  data.visits = loadPersistedVisits();
   globalForDb.__toolino_memory_db__ = data;
-  try {
-    const filePath = ensureDbFile();
-    const tempFile = `${filePath}.tmp`;
-    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
+
+  const maxRetries = 5;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      fs.renameSync(tempFile, filePath);
-    } catch {
-      // Fallback for Windows file locking / OneDrive sync
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-      if (fs.existsSync(tempFile)) {
-        try {
-          fs.unlinkSync(tempFile);
-        } catch {
-          // ignore cleanup error
+      const filePath = ensureDbFile();
+      const tempFile = `${filePath}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
+      fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
+      try {
+        fs.renameSync(tempFile, filePath);
+      } catch {
+        // Fallback for Windows file locking / OneDrive sync
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+        if (fs.existsSync(tempFile)) {
+          try {
+            fs.unlinkSync(tempFile);
+          } catch {
+            // ignore cleanup error
+          }
         }
       }
+      return;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        console.error('Failed to save database store after retries:', error);
+      }
     }
-  } catch (error) {
-    console.error('Failed to save database store:', error);
   }
 }
 
@@ -246,6 +271,28 @@ export function registerEmailUser(
   });
   if (db.events.length > 200) db.events = db.events.slice(0, 200);
   saveDb(db);
+
+  if (prisma?.user?.upsert && process.env.DATABASE_URL) {
+    prisma.user.upsert({
+      where: { email: newUser.email },
+      update: {
+        name: newUser.name,
+        passwordHash: newUser.passwordHash || null,
+        role: newUser.role,
+        lastLoginAt: new Date(newUser.lastLoginAt),
+      },
+      create: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        authProvider: 'email',
+        passwordHash: newUser.passwordHash || null,
+        role: newUser.role,
+        createdAt: new Date(newUser.createdAt),
+        lastLoginAt: new Date(newUser.lastLoginAt),
+      },
+    }).catch(() => {});
+  }
 
   return { user: newUser };
 }
@@ -382,6 +429,24 @@ export function recordToolUsage(toolSlug: string, email?: string): void {
     db.events = db.events.slice(0, 200);
   }
   saveDb(db);
+
+  if (prisma?.toolUsage?.upsert && process.env.DATABASE_URL) {
+    prisma.toolUsage.upsert({
+      where: { slug: toolSlug },
+      update: { count: { increment: 1 } },
+      create: { slug: toolSlug, count: 1 },
+    }).catch(() => {});
+  }
+  if (prisma?.activityEvent?.create && process.env.DATABASE_URL) {
+    prisma.activityEvent.create({
+      data: {
+        type: 'tool_use',
+        toolSlug,
+        email: email ? email.toLowerCase() : null,
+        timestamp: new Date(),
+      },
+    }).catch(() => {});
+  }
 }
 
 // ============================================================
@@ -415,6 +480,10 @@ export function deleteUserById(id: string): { success: boolean; user?: UserRecor
   }
 
   saveDb(db);
+
+  if (prisma?.user?.delete && process.env.DATABASE_URL) {
+    prisma.user.delete({ where: { id } }).catch(() => {});
+  }
   return { success: true, user: deletedUser };
 }
 
@@ -538,6 +607,21 @@ export function createContactMessage(data: {
   db.contactMessages.unshift(newMsg);
   saveDb(db);
 
+  if (prisma?.contactMessage?.create && process.env.DATABASE_URL) {
+    prisma.contactMessage.create({
+      data: {
+        id: newMsg.id,
+        name: newMsg.name,
+        email: newMsg.email,
+        category: newMsg.category,
+        message: newMsg.message,
+        status: newMsg.status,
+        createdAt: new Date(newMsg.createdAt),
+        updatedAt: new Date(newMsg.updatedAt),
+      },
+    }).catch(() => {});
+  }
+
   return newMsg;
 }
 
@@ -580,6 +664,13 @@ export function updateContactMessageStatus(
   target.updatedAt = new Date().toISOString();
   saveDb(db);
 
+  if (prisma?.contactMessage?.update && process.env.DATABASE_URL) {
+    prisma.contactMessage.update({
+      where: { id },
+      data: { status, updatedAt: new Date() },
+    }).catch(() => {});
+  }
+
   return { success: true, message: target };
 }
 
@@ -597,6 +688,10 @@ export function deleteContactMessage(id: string): { success: boolean; error?: st
   db.contactMessages.splice(index, 1);
   saveDb(db);
 
+  if (prisma?.contactMessage?.delete && process.env.DATABASE_URL) {
+    prisma.contactMessage.delete({ where: { id } }).catch(() => {});
+  }
+
   return { success: true };
 }
 
@@ -612,35 +707,25 @@ export function recordPageVisit(data: {
   userAgent?: string;
   visitorSessionId?: string;
 }): { success: boolean; visit?: PageVisitRecord; debounced?: boolean } {
-  const db = getDb();
-  if (!Array.isArray(db.visits)) {
-    db.visits = [];
-  }
-
-  const now = new Date();
-  const nowIso = now.toISOString();
+  const visitorKey = data.visitorSessionId || data.visitorHash;
   const normalizedPath = data.path.trim().toLowerCase();
 
   // Deduplication / Debounce:
-  // If the same visitor hash visited the exact same path within the last 5 seconds,
+  // If the same visitor key visited the exact same path within the last 5 seconds,
   // ignore as duplicate (covers React 19 Strict Mode effect double-invocation & rapid refresh)
-  const fiveSecondsAgo = now.getTime() - 5000;
-  const recentDuplicate = db.visits.find((v) => {
-    return (
-      v.visitorHash === data.visitorHash &&
-      v.path.toLowerCase() === normalizedPath &&
-      new Date(v.timestamp).getTime() > fiveSecondsAgo
+  if (isRecentDuplicateVisit(visitorKey, normalizedPath, 5000)) {
+    const existing = loadPersistedVisits().find(
+      (v) =>
+        (v.visitorSessionId || v.visitorHash) === visitorKey &&
+        v.path.trim().toLowerCase() === normalizedPath
     );
-  });
-
-  if (recentDuplicate) {
-    return { success: true, visit: recentDuplicate, debounced: true };
+    return { success: true, visit: existing, debounced: true };
   }
 
   const id = `vis_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
   const newVisit: PageVisitRecord = {
     id,
-    timestamp: nowIso,
+    timestamp: new Date().toISOString(),
     visitorHash: data.visitorHash,
     maskedIp: data.maskedIp,
     path: data.path.trim(),
@@ -649,16 +734,92 @@ export function recordPageVisit(data: {
     visitorSessionId: data.visitorSessionId,
   };
 
-  // Prepend newest visit first
-  db.visits.unshift(newVisit);
+  persistNewVisitSync(newVisit);
 
-  // Maintain bounded collection size (up to 10,000 visits) for fast memory access and file durability
-  if (db.visits.length > 10000) {
-    db.visits = db.visits.slice(0, 10000);
+  return { success: true, visit: newVisit };
+}
+
+export async function recordPageVisitAsync(data: {
+  visitorHash: string;
+  maskedIp: string;
+  path: string;
+  referrer?: string;
+  userAgent?: string;
+  visitorSessionId?: string;
+}): Promise<{ success: boolean; visit?: PageVisitRecord; debounced?: boolean }> {
+  // If Prisma is configured, attempt direct database persistence with atomic deduplication
+  if (prisma && process.env.DATABASE_URL) {
+    try {
+      const fiveSecondsAgo = new Date(Date.now() - 5000);
+      const duplicate = await prisma.pageVisit.findFirst({
+        where: {
+          path: data.path.trim(),
+          timestamp: { gte: fiveSecondsAgo },
+          OR: [
+            ...(data.visitorSessionId ? [{ visitorSessionId: data.visitorSessionId }] : []),
+            { visitorHash: data.visitorHash },
+          ],
+        },
+      });
+
+      if (duplicate) {
+        return {
+          success: true,
+          visit: {
+            id: duplicate.id,
+            timestamp: duplicate.timestamp.toISOString(),
+            visitorHash: duplicate.visitorHash,
+            maskedIp: duplicate.maskedIp,
+            path: duplicate.path,
+            referrer: duplicate.referrer || undefined,
+            userAgent: duplicate.userAgent || undefined,
+            visitorSessionId: duplicate.visitorSessionId || undefined,
+          },
+          debounced: true,
+        };
+      }
+
+      const id = `vis_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      const now = new Date();
+      const created = await prisma.pageVisit.create({
+        data: {
+          id,
+          timestamp: now,
+          visitorHash: data.visitorHash,
+          maskedIp: data.maskedIp,
+          path: data.path.trim(),
+          referrer: data.referrer ? data.referrer.trim() : null,
+          userAgent: data.userAgent ? data.userAgent.slice(0, 150) : null,
+          visitorSessionId: data.visitorSessionId || null,
+        },
+      });
+
+      const record: PageVisitRecord = {
+        id: created.id,
+        timestamp: created.timestamp.toISOString(),
+        visitorHash: created.visitorHash,
+        maskedIp: created.maskedIp,
+        path: created.path,
+        referrer: created.referrer || undefined,
+        userAgent: created.userAgent || undefined,
+        visitorSessionId: created.visitorSessionId || undefined,
+      };
+
+      // Also mirror to local queue/store for offline callers and test consistency
+      persistNewVisitSync(record);
+
+      return { success: true, visit: record };
+    } catch (err) {
+      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_LOCAL_STORAGE_IN_PROD) {
+        console.error('Failed to persist page visit to production database:', err);
+        throw err;
+      }
+      // Fallback to local store in dev/offline
+    }
   }
 
-  saveDb(db);
-  return { success: true, visit: newVisit };
+  // Fallback for local development and test environment
+  return recordPageVisit(data);
 }
 
 export function getVisitorStats(): {
@@ -667,41 +828,93 @@ export function getVisitorStats(): {
   todayVisitors: number;
   visits: (PageVisitRecord & { visitCount: number })[];
 } {
-  const db = getDb();
-  const visits = Array.isArray(db.visits) ? db.visits : [];
+  return calculateVisitorAnalytics(REPORTING_TIMEZONE);
+}
 
-  // Calculate visit counts per visitorHash across all recorded history
-  const visitCountsByHash = new Map<string, number>();
-  for (const v of visits) {
-    visitCountsByHash.set(v.visitorHash, (visitCountsByHash.get(v.visitorHash) || 0) + 1);
-  }
+export async function getVisitorStatsAsync(): Promise<{
+  totalVisits: number;
+  uniqueVisitors: number;
+  todayVisitors: number;
+  visits: (PageVisitRecord & { visitCount: number })[];
+}> {
+  if (prisma && process.env.DATABASE_URL) {
+    try {
+      const { start, end } = getReportingDayBounds(REPORTING_TIMEZONE);
 
-  const totalVisits = visits.length;
-  const uniqueVisitors = visitCountsByHash.size;
+      const [totalVisits, todayVisits, recentVisits] = await Promise.all([
+        prisma.pageVisit.count(),
+        prisma.pageVisit.findMany({
+          where: {
+            timestamp: {
+              gte: start,
+              lt: end,
+            },
+          },
+          select: {
+            visitorSessionId: true,
+            visitorHash: true,
+          },
+        }),
+        prisma.pageVisit.findMany({
+          take: 500,
+          orderBy: { timestamp: 'desc' },
+        }),
+      ]);
 
-  // Today's visitors: distinct visitor hashes recorded today
-  const now = new Date();
-  const startOfTodayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime();
-  const todayHashes = new Set<string>();
+      const todayKeys = new Set<string>();
+      for (const v of todayVisits) {
+        todayKeys.add(v.visitorSessionId || v.visitorHash);
+      }
 
-  for (const v of visits) {
-    const visitTime = new Date(v.timestamp).getTime();
-    if (visitTime >= startOfTodayUtc) {
-      todayHashes.add(v.visitorHash);
+      // Compute distinct visitors across all time
+      let uniqueVisitors = 0;
+      try {
+        const distinctRows = await prisma.pageVisit.findMany({
+          select: {
+            visitorSessionId: true,
+            visitorHash: true,
+          },
+          distinct: ['visitorSessionId', 'visitorHash'],
+        });
+        const allKeys = new Set(distinctRows.map((r) => r.visitorSessionId || r.visitorHash));
+        uniqueVisitors = allKeys.size;
+      } catch {
+        uniqueVisitors = todayKeys.size;
+      }
+
+      // Map visit counts for recent visits
+      const visitsFormatted: (PageVisitRecord & { visitCount: number })[] = recentVisits.map((v) => ({
+        id: v.id,
+        timestamp: v.timestamp.toISOString(),
+        visitorHash: v.visitorHash,
+        maskedIp: v.maskedIp,
+        path: v.path,
+        referrer: v.referrer || undefined,
+        userAgent: v.userAgent || undefined,
+        visitorSessionId: v.visitorSessionId || undefined,
+        visitCount: 1,
+      }));
+
+      return {
+        totalVisits,
+        uniqueVisitors,
+        todayVisitors: todayKeys.size,
+        visits: visitsFormatted,
+      };
+    } catch (dbErr) {
+      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_LOCAL_STORAGE_IN_PROD) {
+        console.error('Production database query failed:', dbErr);
+        throw new Error('Database connection failed. Unable to retrieve storage records.');
+      }
+      // Fall through to local calculation in dev/test
     }
   }
 
-  const enrichedVisits = visits.map((v) => ({
-    ...v,
-    visitCount: visitCountsByHash.get(v.visitorHash) || 1,
-  }));
+  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_LOCAL_STORAGE_IN_PROD) {
+    throw new Error('Database connection failed. No persistent database connection in production.');
+  }
 
-  return {
-    totalVisits,
-    uniqueVisitors,
-    todayVisitors: todayHashes.size,
-    visits: enrichedVisits,
-  };
+  return getVisitorStats();
 }
 
 export function getRegisteredMembersCount(): number {

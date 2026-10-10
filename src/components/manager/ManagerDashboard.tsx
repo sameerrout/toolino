@@ -120,7 +120,13 @@ export function ManagerDashboard() {
     setError(null);
 
     try {
-      const res = await fetch('/api/manager/stats/');
+      const res = await fetch('/api/manager/stats/', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
       if (res.status === 401 || res.status === 403) {
         throw new Error('Unauthorized: Manager authorization required.');
       }
@@ -142,7 +148,13 @@ export function ManagerDashboard() {
   const fetchMessages = async () => {
     setLoadingMessages(true);
     try {
-      const res = await fetch('/api/manager/messages/');
+      const res = await fetch('/api/manager/messages/', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
       if (res.ok) {
         const json = await res.json();
         if (Array.isArray(json.messages)) {
@@ -309,9 +321,21 @@ export function ManagerDashboard() {
       if (dateFilter !== 'all') {
         const visitTime = new Date(visit.timestamp).getTime();
         if (dateFilter === 'today') {
-          const startOfToday = new Date();
-          startOfToday.setHours(0, 0, 0, 0);
-          if (visitTime < startOfToday.getTime()) return false;
+          const visitDateStr = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(new Date(visit.timestamp));
+
+          const todayDateStr = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(new Date());
+
+          if (visitDateStr !== todayDateStr) return false;
         } else if (dateFilter === '7days') {
           if (now - visitTime > 7 * oneDayMs) return false;
         } else if (dateFilter === '30days') {
@@ -534,7 +558,7 @@ export function ManagerDashboard() {
               </div>
               <div className="mt-4">
                 <div className="text-3xl font-extrabold text-slate-900">{data.uniqueVisitors}</div>
-                <p className="mt-1 text-xs text-slate-500">Distinct estimated visitors (keyed IP HMAC)</p>
+                <p className="mt-1 text-xs text-slate-500">Distinct visitors (first-party ID & keyed IP HMAC)</p>
               </div>
             </div>
 
@@ -550,7 +574,7 @@ export function ManagerDashboard() {
               </div>
               <div className="mt-4">
                 <div className="text-3xl font-extrabold text-slate-900">{data.todayVisitors}</div>
-                <p className="mt-1 text-xs text-slate-500">Unique visitors recorded today</p>
+                <p className="mt-1 text-xs text-slate-500">Unique visitors recorded today (Asia/Kolkata IST)</p>
               </div>
             </div>
 
@@ -646,16 +670,19 @@ export function ManagerDashboard() {
                           <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>
                             {new Date(visit.timestamp).toLocaleDateString('en-US', {
+                              timeZone: 'Asia/Kolkata',
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
                             })}{' '}
                             <span className="text-slate-400 text-2xs">
                               {new Date(visit.timestamp).toLocaleTimeString([], {
+                                timeZone: 'Asia/Kolkata',
                                 hour: '2-digit',
                                 minute: '2-digit',
                                 second: '2-digit',
-                              })}
+                              })}{' '}
+                              IST
                             </span>
                           </span>
                         </div>

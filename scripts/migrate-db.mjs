@@ -31,6 +31,22 @@ async function migrate() {
     return;
   }
 
+  // Safe automatic backup of source data files before migration
+  const backupDir = path.join(ROOT, '.data', 'backups');
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  if (fs.existsSync(DB_FILE)) {
+    fs.copyFileSync(DB_FILE, path.join(backupDir, `db.backup.${timestamp}.json`));
+    console.log(`Created backup of db.json at .data/backups/db.backup.${timestamp}.json`);
+  }
+  const visitsFile = path.join(ROOT, '.data', 'visits.json');
+  if (fs.existsSync(visitsFile)) {
+    fs.copyFileSync(visitsFile, path.join(backupDir, `visits.backup.${timestamp}.json`));
+    console.log(`Created backup of visits.json at .data/backups/visits.backup.${timestamp}.json`);
+  }
+
   let dbData;
   try {
     const raw = fs.readFileSync(DB_FILE, 'utf-8');
@@ -101,9 +117,7 @@ async function migrate() {
       await prisma.toolUsage.upsert({
         where: { slug },
         update: {
-          count: {
-            increment: count,
-          },
+          count: count,
         },
         create: {
           slug,
@@ -114,17 +128,52 @@ async function migrate() {
     }
     console.log(`Successfully migrated ${toolSuccessCount} tool usage records.`);
 
-    // 3. Migrate Activity Events
+    // 3. Migrate Contact Messages
+    const contactMessages = dbData.contactMessages || [];
+    console.log(`Found ${contactMessages.length} contact messages.`);
+    let contactSuccessCount = 0;
+
+    for (const m of contactMessages) {
+      if (!m.id) continue;
+      await prisma.contactMessage.upsert({
+        where: { id: m.id },
+        update: {
+          name: m.name,
+          email: m.email,
+          category: m.category,
+          message: m.message,
+          status: m.status || 'unread',
+          updatedAt: m.updatedAt ? new Date(m.updatedAt) : new Date(),
+        },
+        create: {
+          id: m.id,
+          name: m.name,
+          email: m.email,
+          category: m.category,
+          message: m.message,
+          status: m.status || 'unread',
+          createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
+          updatedAt: m.updatedAt ? new Date(m.updatedAt) : new Date(),
+        },
+      });
+      contactSuccessCount++;
+    }
+    console.log(`Successfully migrated ${contactSuccessCount} contact messages.`);
+
+    // 4. Migrate Activity Events
     const events = dbData.events || [];
     console.log(`Found ${events.length} activity events.`);
     let eventSuccessCount = 0;
 
     for (const event of events) {
-      // Connect to user if user exists with that email
+      const eventId = event.id || `evt_${crypto.createHash('sha256').update(`${event.timestamp}_${event.type}_${event.email}_${event.toolSlug}`).digest('hex').slice(0, 20)}`;
       const userExists = event.email ? await prisma.user.findUnique({ where: { email: event.email.toLowerCase() } }) : null;
 
-      await prisma.activityEvent.create({
-        data: {
+      await prisma.activityEvent.upsert({
+        where: { id: eventId },
+        update: {},
+        create: {
+          id: eventId,
           timestamp: event.timestamp ? new Date(event.timestamp) : new Date(),
           type: event.type || 'tool_use',
           email: event.email ? event.email.toLowerCase() : null,
@@ -136,15 +185,30 @@ async function migrate() {
     }
     console.log(`Successfully imported ${eventSuccessCount} activity events.`);
 
-    // 4. Migrate Page Visits
-    const visits = dbData.visits || [];
+    // 5. Migrate Page Visits
+    const visitsFile = path.join(ROOT, '.data', 'visits.json');
+    let visits = [];
+    if (fs.existsSync(visitsFile)) {
+      try {
+        visits = JSON.parse(fs.readFileSync(visitsFile, 'utf-8'));
+      } catch {
+        visits = [];
+      }
+    }
+    if (!Array.isArray(visits) || visits.length === 0) {
+      visits = dbData.visits || [];
+    }
     console.log(`Found ${visits.length} page visits.`);
     let visitSuccessCount = 0;
 
     for (const v of visits) {
       if (!v.path) continue;
-      await prisma.pageVisit.create({
-        data: {
+      const visitId = v.id || `vis_${crypto.createHash('sha256').update(`${v.timestamp}_${v.path}_${v.visitorHash}`).digest('hex').slice(0, 20)}`;
+      await prisma.pageVisit.upsert({
+        where: { id: visitId },
+        update: {},
+        create: {
+          id: visitId,
           timestamp: v.timestamp ? new Date(v.timestamp) : new Date(),
           visitorHash: v.visitorHash || 'unknown',
           maskedIp: v.maskedIp || 'unknown',

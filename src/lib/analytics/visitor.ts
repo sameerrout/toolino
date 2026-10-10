@@ -140,7 +140,7 @@ export function sanitizePath(rawPath: unknown): string | null {
   // Max length check
   if (trimmed.length > 255) return null;
 
-  // Exclude internal technical paths
+  // Exclude internal technical paths and management dashboards
   const lower = trimmed.toLowerCase();
   if (
     lower.startsWith('/api/') ||
@@ -149,7 +149,8 @@ export function sanitizePath(rawPath: unknown): string | null {
     lower === '/robots.txt' ||
     lower === '/sitemap.xml' ||
     lower === '/manifest.webmanifest' ||
-    lower.startsWith('/manager') // Manager dashboard paths are excluded from visitor analytics
+    lower.startsWith('/manager') || // Manager dashboard paths are excluded from visitor analytics
+    lower.startsWith('/admin') // Admin dashboard paths are excluded from visitor analytics
   ) {
     return null;
   }
@@ -157,6 +158,64 @@ export function sanitizePath(rawPath: unknown): string | null {
   // Strip harmful script or control characters
   const sanitized = trimmed.replace(/[<>"'`;]/g, '');
   return sanitized || null;
+}
+
+/**
+ * Reporting timezone for visitor analytics (default: Asia/Kolkata).
+ */
+export const REPORTING_TIMEZONE = 'Asia/Kolkata';
+
+/**
+ * Returns formatted calendar date 'YYYY-MM-DD' in the reporting timezone.
+ */
+export function getReportingDateString(
+  date: Date | string | number,
+  timeZone = REPORTING_TIMEZONE
+): string {
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+/**
+ * Checks whether a given timestamp occurred today according to reporting timezone boundaries.
+ */
+export function isTodayInReportingTimezone(
+  date: Date | string | number,
+  timeZone = REPORTING_TIMEZONE,
+  referenceDate = new Date()
+): boolean {
+  const dateStr = getReportingDateString(date, timeZone);
+  const todayStr = getReportingDateString(referenceDate, timeZone);
+  return Boolean(dateStr && todayStr && dateStr === todayStr);
+}
+
+/**
+ * Computes start and end Date boundaries (in UTC) for the calendar day in the given timezone.
+ * For Asia/Kolkata (+05:30), 2026-10-11 00:00:00 IST corresponds to 2026-10-10 18:30:00 UTC.
+ */
+export function getReportingDayBounds(
+  timeZone = REPORTING_TIMEZONE,
+  referenceDate = new Date()
+): { start: Date; end: Date; dateStr: string } {
+  const dateStr = getReportingDateString(referenceDate, timeZone);
+  let start: Date;
+  let end: Date;
+
+  if (timeZone === 'Asia/Kolkata') {
+    start = new Date(`${dateStr}T00:00:00+05:30`);
+    end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  } else {
+    start = new Date(`${dateStr}T00:00:00Z`);
+    end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  return { start, end, dateStr };
 }
 
 /**
