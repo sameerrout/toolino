@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireManagerSession } from '@/lib/auth';
-import { getDb, getVisitorStats, getVisitorStatsAsync, prisma } from '@/lib/db';
+import {
+  getDb,
+  getVisitorStats,
+  getVisitorStatsAsync,
+  prisma,
+  resolvePrismaDatabaseUrl,
+  ensureDatabaseSchemaAsync,
+} from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -48,8 +55,10 @@ export async function GET(request?: NextRequest) {
     }[] = [];
 
     let fetchedFromPrisma = false;
-    if (prisma && process.env.DATABASE_URL) {
+    const dbUrl = resolvePrismaDatabaseUrl();
+    if (prisma && dbUrl) {
       try {
+        await ensureDatabaseSchemaAsync(prisma).catch(() => {});
         const [users, dbMessages, dbEvents] = await Promise.all([
           prisma.user.findMany({ orderBy: { createdAt: 'desc' } }),
           prisma.contactMessage.findMany({ orderBy: { createdAt: 'desc' } }),
@@ -142,6 +151,9 @@ export async function GET(request?: NextRequest) {
         unreadMessages,
         authenticatedAs: session.email,
         isDatabaseConnected: visitorStats.isPostgresConnected,
+        databaseStatus: visitorStats.databaseStatus,
+        databaseError: visitorStats.errorMessage,
+        databaseProvider: visitorStats.isPostgresConnected ? 'Neon PostgreSQL' : (visitorStats.databaseStatus === 'query_failed' ? 'Database Connection Error' : 'Unconfigured'),
       },
       {
         headers: {

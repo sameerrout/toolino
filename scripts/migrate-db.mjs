@@ -19,10 +19,16 @@ const DB_FILE = path.join(ROOT, '.data', 'db.json');
 async function migrate() {
   console.log('--- ToolForForever Database Migration ---');
 
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl =
+    process.env.DATABASE_URL_UNPOOLED ||
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_URL;
+
   if (!databaseUrl) {
     console.error('ERROR: DATABASE_URL environment variable is not defined.');
-    console.error('Please configure DATABASE_URL in your environment or .env.local.');
+    console.error('Please configure DATABASE_URL or DATABASE_URL_UNPOOLED in your environment or .env.local.');
     process.exit(1);
   }
 
@@ -56,7 +62,9 @@ async function migrate() {
     process.exit(1);
   }
 
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({
+    datasources: { db: { url: databaseUrl } },
+  });
 
   try {
     await prisma.$connect();

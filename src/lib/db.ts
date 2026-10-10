@@ -79,12 +79,60 @@ const globalForDb = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-// Global Prisma instance for connection reuse across hot-reloads
-export const prisma =
-  globalForDb.prisma ||
-  new PrismaClient({
+export function resolvePrismaDatabaseUrl(): string | undefined {
+  const candidates = [
+    process.env.DATABASE_URL,
+    process.env.POSTGRES_PRISMA_URL,
+    process.env.DATABASE_URL_UNPOOLED,
+    process.env.POSTGRES_URL_NON_POOLING,
+    process.env.POSTGRES_URL,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'string') {
+      const trimmed = candidate.trim();
+      if (
+        (trimmed.startsWith('postgresql:') || trimmed.startsWith('postgres:')) &&
+        !trimmed.includes('localhost')
+      ) {
+        try {
+          const parsed = new URL(trimmed);
+          if (parsed.hostname.includes('-pooler') || parsed.hostname.includes('pooler')) {
+            if (!parsed.searchParams.has('pgbouncer')) {
+              parsed.searchParams.set('pgbouncer', 'true');
+            }
+          }
+          if (!parsed.searchParams.has('sslmode')) {
+            parsed.searchParams.set('sslmode', 'require');
+          }
+          if (!parsed.searchParams.has('connect_timeout')) {
+            parsed.searchParams.set('connect_timeout', '15');
+          }
+          return parsed.toString();
+        } catch {
+          return trimmed;
+        }
+      }
+    }
+  }
+
+  const local = process.env.DATABASE_URL;
+  if (local && (local.startsWith('postgresql:') || local.startsWith('postgres:'))) {
+    return local;
+  }
+  return undefined;
+}
+
+function getPrismaClient(): PrismaClient {
+  const resolvedUrl = resolvePrismaDatabaseUrl();
+  return new PrismaClient({
+    datasources: resolvedUrl ? { db: { url: resolvedUrl } } : undefined,
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
+}
+
+// Global Prisma instance for connection reuse across hot-reloads
+export const prisma = globalForDb.prisma || getPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForDb.prisma = prisma;
 
@@ -852,6 +900,100 @@ export function recordPageVisit(data: {
   return { success: true, visit: newVisit };
 }
 
+let schemaEnsured = false;
+
+export async function ensureDatabaseSchemaAsync(client: PrismaClient = prisma): Promise<boolean> {
+  if (schemaEnsured) return true;
+  try {
+    await client.$queryRawUnsafe('SELECT 1 FROM "page_visits" LIMIT 1;');
+    schemaEnsured = true;
+    return true;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('does not exist') || msg.includes('P2021') || msg.includes('42P01')) {
+      console.warn('PostgreSQL tables missing. Auto-creating schema...');
+      const statements = [
+        `CREATE TABLE IF NOT EXISTS "users" (
+          "id" TEXT NOT NULL,
+          "email" TEXT NOT NULL,
+          "name" TEXT NOT NULL,
+          "picture" TEXT,
+          "authProvider" TEXT NOT NULL DEFAULT 'email',
+          "passwordHash" TEXT,
+          "role" TEXT NOT NULL DEFAULT 'user',
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "lastLoginAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "resetTokenHash" TEXT,
+          "resetTokenExpires" TIMESTAMP(3),
+          CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+        );`,
+        `CREATE TABLE IF NOT EXISTS "tool_usages" (
+          "id" TEXT NOT NULL,
+          "slug" TEXT NOT NULL,
+          "count" INTEGER NOT NULL DEFAULT 0,
+          "updatedAt" TIMESTAMP(3) NOT NULL,
+          CONSTRAINT "tool_usages_pkey" PRIMARY KEY ("id")
+        );`,
+        `CREATE TABLE IF NOT EXISTS "activity_events" (
+          "id" TEXT NOT NULL,
+          "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "type" TEXT NOT NULL,
+          "email" TEXT,
+          "toolSlug" TEXT,
+          CONSTRAINT "activity_events_pkey" PRIMARY KEY ("id")
+        );`,
+        `CREATE TABLE IF NOT EXISTS "contact_messages" (
+          "id" TEXT NOT NULL,
+          "name" TEXT NOT NULL,
+          "email" TEXT NOT NULL,
+          "category" TEXT NOT NULL,
+          "message" TEXT NOT NULL,
+          "status" TEXT NOT NULL DEFAULT 'unread',
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL,
+          CONSTRAINT "contact_messages_pkey" PRIMARY KEY ("id")
+        );`,
+        `CREATE TABLE IF NOT EXISTS "page_visits" (
+          "id" TEXT NOT NULL,
+          "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "visitorHash" TEXT NOT NULL,
+          "maskedIp" TEXT NOT NULL,
+          "path" TEXT NOT NULL,
+          "referrer" TEXT,
+          "userAgent" TEXT,
+          "visitorSessionId" TEXT,
+          CONSTRAINT "page_visits_pkey" PRIMARY KEY ("id")
+        );`,
+        `CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email");`,
+        `CREATE UNIQUE INDEX IF NOT EXISTS "tool_usages_slug_key" ON "tool_usages"("slug");`,
+        `CREATE INDEX IF NOT EXISTS "activity_events_timestamp_idx" ON "activity_events"("timestamp");`,
+        `CREATE INDEX IF NOT EXISTS "activity_events_email_idx" ON "activity_events"("email");`,
+        `CREATE INDEX IF NOT EXISTS "contact_messages_status_idx" ON "contact_messages"("status");`,
+        `CREATE INDEX IF NOT EXISTS "contact_messages_createdAt_idx" ON "contact_messages"("createdAt");`,
+        `CREATE INDEX IF NOT EXISTS "page_visits_timestamp_idx" ON "page_visits"("timestamp");`,
+        `CREATE INDEX IF NOT EXISTS "page_visits_visitorHash_idx" ON "page_visits"("visitorHash");`,
+        `CREATE INDEX IF NOT EXISTS "page_visits_path_idx" ON "page_visits"("path");`,
+        `DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'activity_events_email_fkey'
+          ) THEN
+            ALTER TABLE "activity_events" ADD CONSTRAINT "activity_events_email_fkey" FOREIGN KEY ("email") REFERENCES "users"("email") ON DELETE CASCADE ON UPDATE CASCADE;
+          END IF;
+        END $$;`,
+      ];
+
+      for (const sql of statements) {
+        await client.$executeRawUnsafe(sql);
+      }
+      schemaEnsured = true;
+      console.warn('PostgreSQL schema auto-creation completed.');
+      return true;
+    }
+    throw err;
+  }
+}
+
 export async function recordPageVisitAsync(data: {
   visitorHash: string;
   maskedIp: string;
@@ -860,9 +1002,10 @@ export async function recordPageVisitAsync(data: {
   userAgent?: string;
   visitorSessionId?: string;
 }): Promise<{ success: boolean; visit?: PageVisitRecord; debounced?: boolean }> {
-  // If Prisma is configured, attempt direct database persistence with atomic deduplication
-  if (prisma && process.env.DATABASE_URL) {
+  const dbUrl = resolvePrismaDatabaseUrl();
+  if (prisma && dbUrl) {
     try {
+      await ensureDatabaseSchemaAsync(prisma).catch(() => {});
       const fiveSecondsAgo = new Date(Date.now() - 5000);
       const duplicate = await prisma.pageVisit.findFirst({
         where: {
@@ -946,9 +1089,13 @@ export async function getVisitorStatsAsync(): Promise<{
   todayVisitors: number;
   visits: (PageVisitRecord & { visitCount: number })[];
   isPostgresConnected: boolean;
+  databaseStatus: 'connected' | 'query_failed' | 'unconfigured';
+  errorMessage?: string;
 }> {
-  if (prisma && process.env.DATABASE_URL) {
+  const dbUrl = resolvePrismaDatabaseUrl();
+  if (prisma && dbUrl) {
     try {
+      await ensureDatabaseSchemaAsync(prisma).catch(() => {});
       const { start, end } = getReportingDayBounds(REPORTING_TIMEZONE);
 
       const [totalVisits, todayVisits, recentVisits] = await Promise.all([
@@ -1011,9 +1158,18 @@ export async function getVisitorStatsAsync(): Promise<{
         todayVisitors: todayKeys.size,
         visits: visitsFormatted,
         isPostgresConnected: true,
+        databaseStatus: 'connected',
       };
     } catch (dbErr) {
-      console.warn('Prisma PostgreSQL query failed; falling back to durable visits store:', dbErr instanceof Error ? dbErr.message : dbErr);
+      const errMessage = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      console.warn('Prisma PostgreSQL query failed; falling back to durable visits store:', errMessage);
+      const localStats = getVisitorStats();
+      return {
+        ...localStats,
+        isPostgresConnected: false,
+        databaseStatus: 'query_failed',
+        errorMessage: errMessage.replace(/:\/\/.*@/, '://***@'),
+      };
     }
   }
 
@@ -1021,6 +1177,7 @@ export async function getVisitorStatsAsync(): Promise<{
   return {
     ...localStats,
     isPostgresConnected: false,
+    databaseStatus: 'unconfigured',
   };
 }
 

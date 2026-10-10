@@ -83,6 +83,9 @@ interface ManagerStatsData {
   unreadMessages?: number;
   authenticatedAs: string;
   isDatabaseConnected?: boolean;
+  databaseStatus?: 'connected' | 'query_failed' | 'unconfigured';
+  databaseError?: string;
+  databaseProvider?: string;
 }
 
 type DateFilterOption = 'all' | 'today' | '7days' | '30days';
@@ -571,31 +574,50 @@ export function ManagerDashboard() {
       )}
 
       {/* Database Connection Notice */}
-      {data && (data.isDatabaseConnected === false ? (
-        <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-center gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              <strong>PostgreSQL Awaiting Configuration:</strong> Production persistence requires a persistent PostgreSQL database. Local storage is not an authoritative production database. Connect <code>DATABASE_URL</code> in Vercel to activate PostgreSQL clustering across serverless instances.
+      {data && (
+        data.databaseStatus === 'query_failed' ? (
+          <div className="p-4 rounded-xl border border-red-300 bg-red-50 text-red-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>
+                <strong>Database Query Issue:</strong> PostgreSQL connection is configured, but queries encountered an error: {data.databaseError || 'Connection timed out'}. Using durable local fallback.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchStats(true)}
+              className="px-2.5 py-1 rounded-md bg-red-100 hover:bg-red-200 text-red-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit cursor-pointer transition"
+            >
+              Retry Connection
+            </button>
+          </div>
+        ) : data.isDatabaseConnected ? (
+          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/80 text-emerald-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                <strong>Authoritative PostgreSQL Connected:</strong> All visitor analytics, member accounts, contact messages, and activity events are stored in Neon PostgreSQL ({data.databaseProvider || 'Active'}).
+                {data.totalVisits === 0 && ' (Database is newly initialized and ready to record events).'}
+              </span>
+            </div>
+            <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit">
+              PostgreSQL Active
             </span>
           </div>
-          <span className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit">
-            Awaiting PostgreSQL
-          </span>
-        </div>
-      ) : (
-        <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/80 text-emerald-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>
-              <strong>Authoritative PostgreSQL Connected:</strong> All visitor analytics, member accounts, contact messages, and activity events are stored in PostgreSQL.
+        ) : (
+          <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>PostgreSQL Awaiting Configuration:</strong> Production persistence requires a persistent PostgreSQL database. Local storage is not an authoritative production database. Connect <code>DATABASE_URL</code> in Vercel to activate PostgreSQL clustering across serverless instances.
+              </span>
+            </div>
+            <span className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit">
+              Awaiting PostgreSQL
             </span>
           </div>
-          <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit">
-            PostgreSQL Active
-          </span>
-        </div>
-      ))}
+        )
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: WEBSITE VISITOR ANALYTICS */}
