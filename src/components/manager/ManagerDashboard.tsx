@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Container } from '@/components/common/Container';
 import {
   Users,
-  Wrench,
   ShieldCheck,
   RefreshCw,
   AlertTriangle,
@@ -23,13 +22,22 @@ import {
   Mail,
   MessageSquare,
   Check,
+  Calendar,
+  Globe,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
-interface ToolUsageItem {
-  slug: string;
-  name: string;
-  category: string;
-  count: number;
+export interface VisitorHistoryItem {
+  id: string;
+  timestamp: string;
+  visitorHash: string;
+  maskedIp: string;
+  path: string;
+  referrer?: string;
+  userAgent?: string;
+  visitorSessionId?: string;
+  visitCount: number;
 }
 
 interface UserItem {
@@ -63,22 +71,35 @@ export interface ContactMessageItem {
 }
 
 interface ManagerStatsData {
+  totalVisits: number;
+  uniqueVisitors: number;
+  todayVisitors: number;
+  registeredMembers: number;
   totalUsers: number;
+  visits: VisitorHistoryItem[];
   users: UserItem[];
-  totalToolUses: number;
-  toolUsage: ToolUsageItem[];
   recentEvents: ActivityEvent[];
   totalMessages?: number;
   unreadMessages?: number;
   authenticatedAs: string;
 }
 
+type DateFilterOption = 'all' | 'today' | '7days' | '30days';
+
 export function ManagerDashboard() {
   const [data, setData] = useState<ManagerStatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'messages'>('overview');
-  const [toolSearch, setToolSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'messages'>('analytics');
+
+  // Visitor history filters & pagination
+  const [pathSearch, setPathSearch] = useState('');
+  const [dateFilter, setDateFilter] = useState<DateFilterOption>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  // Member management state
   const [memberToDelete, setMemberToDelete] = useState<UserItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -93,16 +114,19 @@ export function ManagerDashboard() {
   const [messageSearch, setMessageSearch] = useState('');
   const [messageFilter, setMessageFilter] = useState<'all' | 'unread' | 'read' | 'replied' | 'resolved'>('all');
 
-  const fetchStats = async () => {
-    setLoading(true);
+  const fetchStats = async (isManualRefresh = false) => {
+    if (isManualRefresh) setRefreshing(true);
+    else setLoading(true);
     setError(null);
+
     try {
       const res = await fetch('/api/manager/stats/');
       if (res.status === 401 || res.status === 403) {
         throw new Error('Unauthorized: Manager authorization required.');
       }
       if (!res.ok) {
-        throw new Error('Failed to load manager statistics.');
+        const errorJson = await res.json().catch(() => ({}));
+        throw new Error(errorJson.error || 'Failed to load manager analytics data from server database.');
       }
       const json = await res.json();
       setData(json);
@@ -111,6 +135,7 @@ export function ManagerDashboard() {
       setError(msg);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -132,7 +157,7 @@ export function ManagerDashboard() {
   };
 
   const refreshAll = async () => {
-    await Promise.all([fetchStats(), fetchMessages()]);
+    await Promise.all([fetchStats(true), fetchMessages()]);
   };
 
   useEffect(() => {
@@ -164,6 +189,7 @@ export function ManagerDashboard() {
         if (!prev) return null;
         return {
           ...prev,
+          registeredMembers: Math.max(0, prev.registeredMembers - 1),
           totalUsers: Math.max(0, prev.totalUsers - 1),
           users: prev.users.filter((u) => u.id !== deletedId),
           recentEvents: [
@@ -263,12 +289,58 @@ export function ManagerDashboard() {
     }
   };
 
+  // Filtered visitor logs
+  const filteredVisits = useMemo(() => {
+    if (!data?.visits) return [];
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    return data.visits.filter((visit) => {
+      // Path filter
+      if (pathSearch.trim()) {
+        const q = pathSearch.trim().toLowerCase();
+        const matchesPath = visit.path.toLowerCase().includes(q);
+        const matchesReferrer = visit.referrer ? visit.referrer.toLowerCase().includes(q) : false;
+        const matchesId = visit.maskedIp.toLowerCase().includes(q) || visit.id.toLowerCase().includes(q);
+        if (!matchesPath && !matchesReferrer && !matchesId) return false;
+      }
+
+      // Date range filter
+      if (dateFilter !== 'all') {
+        const visitTime = new Date(visit.timestamp).getTime();
+        if (dateFilter === 'today') {
+          const startOfToday = new Date();
+          startOfToday.setHours(0, 0, 0, 0);
+          if (visitTime < startOfToday.getTime()) return false;
+        } else if (dateFilter === '7days') {
+          if (now - visitTime > 7 * oneDayMs) return false;
+        } else if (dateFilter === '30days') {
+          if (now - visitTime > 30 * oneDayMs) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [data?.visits, pathSearch, dateFilter]);
+
+  // Paginated visitor logs
+  const totalPages = Math.max(1, Math.ceil(filteredVisits.length / pageSize));
+  const paginatedVisits = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredVisits.slice(start, start + pageSize);
+  }, [filteredVisits, currentPage, pageSize]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [pathSearch, dateFilter]);
+
   if (loading) {
     return (
       <Container className="py-16">
         <div className="flex flex-col items-center justify-center space-y-4">
           <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
-          <p className="text-sm font-medium text-slate-600">Verifying manager credentials...</p>
+          <p className="text-sm font-medium text-slate-600">Verifying manager credentials and loading analytics...</p>
         </div>
       </Container>
     );
@@ -282,18 +354,20 @@ export function ManagerDashboard() {
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Access Denied</h1>
-            <p className="mt-2 text-xs text-slate-500">
-              This area is restricted to authorized ToolForForever administrators. Please log in with an authorized account.
+            <h1 className="text-xl font-bold text-slate-900">Database Connection or Authorization Error</h1>
+            <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+              {error || 'Unable to connect to the server database. Analytics data cannot be loaded at this time.'}
             </p>
           </div>
           <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href="/signin/"
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition"
+            <button
+              type="button"
+              onClick={() => fetchStats()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition cursor-pointer flex items-center gap-1.5"
             >
-              Sign In as Manager
-            </Link>
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Connection</span>
+            </button>
             <Link
               href="/"
               className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition"
@@ -307,13 +381,6 @@ export function ManagerDashboard() {
   }
 
   const unreadCount = messages.filter((m) => m.status === 'unread').length;
-
-  const filteredTools = data.toolUsage.filter(
-    (t) =>
-      t.name.toLowerCase().includes(toolSearch.toLowerCase()) ||
-      t.slug.toLowerCase().includes(toolSearch.toLowerCase()) ||
-      t.category.toLowerCase().includes(toolSearch.toLowerCase())
-  );
 
   const filteredMessages = messages.filter((msg) => {
     if (messageFilter !== 'all' && msg.status !== messageFilter) return false;
@@ -357,10 +424,11 @@ export function ManagerDashboard() {
         <button
           type="button"
           onClick={refreshAll}
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer"
+          disabled={refreshing}
+          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loadingMessages ? 'animate-spin' : ''}`} />
-          Refresh Data
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing || loadingMessages ? 'animate-spin' : ''}`} />
+          <span>{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
         </button>
       </div>
 
@@ -368,15 +436,15 @@ export function ManagerDashboard() {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-px">
         <button
           type="button"
-          onClick={() => setActiveTab('overview')}
+          onClick={() => setActiveTab('analytics')}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition cursor-pointer ${
-            activeTab === 'overview'
+            activeTab === 'analytics'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           <LayoutDashboard className="w-4 h-4" />
-          <span>Overview & Usage</span>
+          <span>Website Visitor Analytics</span>
         </button>
 
         <button
@@ -432,165 +500,286 @@ export function ManagerDashboard() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 1: OVERVIEW & USAGE */}
+      {/* TAB 1: WEBSITE VISITOR ANALYTICS */}
       {/* ========================================================================= */}
-      {activeTab === 'overview' && (
+      {activeTab === 'analytics' && (
         <div className="space-y-8 animate-in fade-in">
-          {/* KPI Overview Cards */}
+          {/* 4 Core KPI Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* 1. Total Visits */}
             <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Total Members
+                  Total Visits
                 </span>
                 <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                  <Globe className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-4">
+                <div className="text-3xl font-extrabold text-slate-900">{data.totalVisits}</div>
+                <p className="mt-1 text-xs text-slate-500">Recorded page visits since tracking enabled</p>
+              </div>
+            </div>
+
+            {/* 2. Unique Visitors */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Unique Visitors
+                </span>
+                <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
                   <Users className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4">
-                <div className="text-3xl font-extrabold text-slate-900">{data.totalUsers}</div>
-                <p className="mt-1 text-xs text-slate-500">Registered authenticated members</p>
+                <div className="text-3xl font-extrabold text-slate-900">{data.uniqueVisitors}</div>
+                <p className="mt-1 text-xs text-slate-500">Distinct estimated visitors (keyed IP HMAC)</p>
               </div>
             </div>
 
+            {/* 3. Today's Visitors */}
             <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Total Tool Uses
+                  Today&apos;s Visitors
                 </span>
                 <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                  <Wrench className="w-5 h-5" />
+                  <Calendar className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4">
-                <div className="text-3xl font-extrabold text-slate-900">{data.totalToolUses}</div>
-                <p className="mt-1 text-xs text-slate-500">Aggregated real tool interactions</p>
+                <div className="text-3xl font-extrabold text-slate-900">{data.todayVisitors}</div>
+                <p className="mt-1 text-xs text-slate-500">Unique visitors recorded today</p>
               </div>
             </div>
 
+            {/* 4. Registered Members */}
             <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Active Tools
-                </span>
-                <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
-                  <ExternalLink className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="text-3xl font-extrabold text-slate-900">{data.toolUsage.length}</div>
-                <p className="mt-1 text-xs text-slate-500">Live tools available in catalog</p>
-              </div>
-            </div>
-
-            <div
-              onClick={() => setActiveTab('messages')}
-              className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs hover:border-blue-300 hover:shadow-md transition cursor-pointer group"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-blue-600 transition">
-                  Contact Messages
+                  Registered Members
                 </span>
                 <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-                  <Mail className="w-5 h-5" />
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4">
-                <div className="text-3xl font-extrabold text-slate-900 flex items-center gap-2">
-                  <span>{messages.length}</span>
-                  {unreadCount > 0 && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                      {unreadCount} unread
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-blue-600 font-medium">View submitted inquiries →</p>
+                <div className="text-3xl font-extrabold text-slate-900">{data.registeredMembers}</div>
+                <p className="mt-1 text-xs text-slate-500">Actual registered accounts in database</p>
               </div>
             </div>
           </div>
 
-          {/* Tool Usage Breakdown */}
+          {/* Visitor History Table Section */}
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Header with Title and Search/Filters */}
+            <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Tool Usage</h2>
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Eye className="w-5 h-5 text-blue-600" />
+                  <span>Website Visitor History</span>
+                </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Live count of how many times each tool has been used (Real data).
+                  Real-time server log of page visits with privacy-preserving visitor identifiers and referrer metadata.
                 </p>
               </div>
 
-              <div className="relative max-w-xs w-full">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search tools..."
-                  value={toolSearch}
-                  onChange={(e) => setToolSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              {/* Filter controls */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Search path */}
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Filter page path or ID..."
+                    value={pathSearch}
+                    onChange={(e) => setPathSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Date range buttons */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                  {(
+                    [
+                      { key: 'all', label: 'All Time' },
+                      { key: 'today', label: 'Today' },
+                      { key: '7days', label: '7 Days' },
+                      { key: '30days', label: '30 Days' },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setDateFilter(opt.key)}
+                      className={`px-2.5 py-1 text-2xs font-semibold rounded-lg transition cursor-pointer ${
+                        dateFilter === opt.key
+                          ? 'bg-white text-blue-600 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
+            {/* Visits Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                   <tr>
-                    <th className="px-6 py-3">Tool Name</th>
-                    <th className="px-6 py-3">Category</th>
-                    <th className="px-6 py-3">Identifier / Path</th>
-                    <th className="px-6 py-3 text-right">Usage Count</th>
+                    <th className="px-6 py-3.5">Visit Date & Time</th>
+                    <th className="px-6 py-3.5">Visitor Identifier</th>
+                    <th className="px-6 py-3.5">Page Visited</th>
+                    <th className="px-6 py-3.5">Referrer</th>
+                    <th className="px-6 py-3.5 text-right">Visitor Sessions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {filteredTools.map((tool) => (
-                    <tr key={tool.slug} className="hover:bg-slate-50/70 transition">
+                  {paginatedVisits.map((visit) => (
+                    <tr key={visit.id} className="hover:bg-slate-50/70 transition">
+                      <td className="px-6 py-3.5 whitespace-nowrap text-slate-900 font-medium">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>
+                            {new Date(visit.timestamp).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}{' '}
+                            <span className="text-slate-400 text-2xs">
+                              {new Date(visit.timestamp).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                              })}
+                            </span>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3.5 font-mono text-2xs">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          {visit.maskedIp}
+                        </span>
+                      </td>
                       <td className="px-6 py-3.5 font-semibold text-slate-900">
                         <Link
-                          href={`/tools/${tool.slug}/`}
-                          className="hover:text-blue-600 transition inline-flex items-center gap-1.5"
+                          href={visit.path}
+                          className="hover:text-blue-600 transition inline-flex items-center gap-1"
                         >
-                          {tool.name}
+                          <span>{visit.path}</span>
                           <ExternalLink className="w-3 h-3 text-slate-400" />
                         </Link>
                       </td>
-                      <td className="px-6 py-3.5">
-                        <span className="inline-block px-2 py-0.5 rounded-full text-2xs font-medium bg-slate-100 text-slate-600 capitalize">
-                          {tool.category.replace('-tools', '')}
+                      <td className="px-6 py-3.5 text-slate-500">
+                        {visit.referrer ? (
+                          <span className="truncate max-w-[200px] block font-mono text-2xs text-slate-600" title={visit.referrer}>
+                            {visit.referrer}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic text-2xs">Direct / None</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <span className="inline-block px-2 py-0.5 rounded-full text-2xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                          {visit.visitCount} {visit.visitCount === 1 ? 'visit' : 'visits'}
                         </span>
-                      </td>
-                      <td className="px-6 py-3.5 font-mono text-slate-500">
-                        /tools/{tool.slug}/
-                      </td>
-                      <td className="px-6 py-3.5 text-right font-bold text-slate-900">
-                        {tool.count}
                       </td>
                     </tr>
                   ))}
-                  {filteredTools.length === 0 && (
+
+                  {/* Empty state */}
+                  {filteredVisits.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
-                        No matching tools found.
+                      <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                        <Globe className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <p className="font-semibold text-slate-700">No visitor records found.</p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                          {pathSearch.trim() || dateFilter !== 'all'
+                            ? 'No recorded visits match the current path or date filter. Try clearing the filters.'
+                            : 'Visitor activity is tracked automatically as users browse the website.'}
+                        </p>
+                        {(pathSearch.trim() || dateFilter !== 'all') && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPathSearch('');
+                              setDateFilter('all');
+                            }}
+                            className="mt-3 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+                          >
+                            Clear Filters
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {filteredVisits.length > pageSize && (
+              <div className="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <div>
+                  Showing <span className="font-semibold text-slate-900">{(currentPage - 1) * pageSize + 1}</span> to{' '}
+                  <span className="font-semibold text-slate-900">
+                    {Math.min(currentPage * pageSize, filteredVisits.length)}
+                  </span>{' '}
+                  of <span className="font-semibold text-slate-900">{filteredVisits.length}</span> visits
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="px-2 font-medium">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Two Column Layout: Recent Activity & Registered Members */}
+          {/* Two Column Layout: Registered Members & Recent Activity */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Members List */}
+            {/* Registered Members List */}
             <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6">
-              <h2 className="text-base font-bold text-slate-900">Registered Members</h2>
-              <p className="text-xs text-slate-500 mt-0.5 mb-4">
-                Registered platform members and administrators.
-              </p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Registered Members ({data.registeredMembers})</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Verified registered accounts stored in the server database.
+                  </p>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  {data.registeredMembers} Total
+                </span>
+              </div>
 
               <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                 {data.users.length === 0 ? (
                   <p className="text-xs text-slate-500 py-4 text-center">
-                    No users registered yet.
+                    No registered members recorded in database.
                   </p>
                 ) : (
                   data.users.map((member) => (
@@ -600,7 +789,7 @@ export function ManagerDashboard() {
                     >
                       <div className="min-w-0 pr-2">
                         <div className="font-semibold text-xs text-slate-900 truncate">{member.name}</div>
-                        <div className="text-2xs text-slate-500 truncate">{member.email}</div>
+                        <div className="text-2xs text-slate-500 truncate font-mono">{member.email}</div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         <div className="text-right text-2xs text-slate-400">
@@ -629,11 +818,11 @@ export function ManagerDashboard() {
               </div>
             </div>
 
-            {/* Recent Activity Log */}
+            {/* Recent Activity Stream */}
             <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6">
-              <h2 className="text-base font-bold text-slate-900">Recent Activity</h2>
+              <h2 className="text-base font-bold text-slate-900">Recent Platform Activity</h2>
               <p className="text-xs text-slate-500 mt-0.5 mb-4">
-                Real event stream of user signups, logins, and tool usages.
+                Real event stream of user signups, logins, and member actions.
               </p>
 
               <div className="space-y-3 max-h-80 overflow-y-auto pr-1">

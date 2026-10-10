@@ -136,6 +136,28 @@ async function migrate() {
     }
     console.log(`Successfully imported ${eventSuccessCount} activity events.`);
 
+    // 4. Migrate Page Visits
+    const visits = dbData.visits || [];
+    console.log(`Found ${visits.length} page visits.`);
+    let visitSuccessCount = 0;
+
+    for (const v of visits) {
+      if (!v.path) continue;
+      await prisma.pageVisit.create({
+        data: {
+          timestamp: v.timestamp ? new Date(v.timestamp) : new Date(),
+          visitorHash: v.visitorHash || 'unknown',
+          maskedIp: v.maskedIp || 'unknown',
+          path: v.path,
+          referrer: v.referrer || null,
+          userAgent: v.userAgent || null,
+          visitorSessionId: v.visitorSessionId || null,
+        },
+      });
+      visitSuccessCount++;
+    }
+    console.log(`Successfully imported ${visitSuccessCount} page visits.`);
+
     console.log('--- Migration Completed Successfully ---');
   } catch (error) {
     console.error('Migration failed:', error);

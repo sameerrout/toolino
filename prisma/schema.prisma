@@ -61,3 +61,19 @@ model ContactMessage {
   @@map("contact_messages")
 }
 
+model PageVisit {
+  id               String   @id @default(cuid())
+  timestamp        DateTime @default(now())
+  visitorHash      String
+  maskedIp         String
+  path             String
+  referrer         String?
+  userAgent        String?
+  visitorSessionId String?
+
+  @@index([timestamp])
+  @@index([visitorHash])
+  @@index([path])
+  @@map("page_visits")
+}
+

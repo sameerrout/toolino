@@ -9,6 +9,7 @@ import { ConsentBanner } from '@/components/consent/ConsentBanner';
 import { Analytics } from '@/components/consent/Analytics';
 import { AdsenseLoader } from '@/components/ads/AdsenseLoader';
 import { AdSlotBudget } from '@/components/ads/AdSlot';
+import { VisitorTracker } from '@/components/analytics/VisitorTracker';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { organizationSchema, websiteSchema } from '@/lib/seo/schema';
 import { ROOT_METADATA } from '@/lib/seo/metadata';
@@ -72,6 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Analytics />
           <AdSlotBudget />
           <ConsentBanner />
+          <VisitorTracker />
         </ConsentProvider>
 
         {/* Machine-readable brand confirmation, used by the Contact page too. */}

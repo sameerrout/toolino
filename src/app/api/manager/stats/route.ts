@@ -1,58 +1,32 @@
 import { NextResponse } from 'next/server';
 import { requireManagerSession } from '@/lib/auth';
-import { getDb } from '@/lib/db';
-import { TOOL_REGISTRY, type ToolRegistryEntry } from '@/data/toolRegistry';
+import { getDb, getVisitorStats } from '@/lib/db';
 
 export async function GET() {
-  // Server-side authentication and authorization check
-  const session = await requireManagerSession();
-  if (!session) {
-    return NextResponse.json(
-      { error: 'Unauthorized: Manager access required.' },
-      { status: 403 }
-    );
-  }
-
-  const db = getDb();
-
-  interface ToolItem {
-    slug: string;
-    name: string;
-    category: string;
-    count: number;
-  }
-
-  // Combine known tools from registry with recorded usage
-  const toolList: ToolItem[] = TOOL_REGISTRY.map((t: ToolRegistryEntry) => ({
-    slug: t.slug,
-    name: t.name,
-    category: t.category,
-    count: db.toolUsage[t.slug] || 0,
-  }));
-
-  // Also include any other recorded slugs that might not be in TOOL_REGISTRY
-  const knownSlugs = new Set(toolList.map((t: ToolItem) => t.slug));
-  for (const [slug, count] of Object.entries(db.toolUsage)) {
-    if (!knownSlugs.has(slug)) {
-      toolList.push({
-        slug,
-        name: slug,
-        category: 'other',
-        count,
-      });
+  try {
+    // 1. Server-side authentication and authorization check
+    const session = await requireManagerSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Manager credentials required.' },
+        { status: 403 }
+      );
     }
-  }
 
-  // Sort tools by usage descending
-  toolList.sort((a: ToolItem, b: ToolItem) => b.count - a.count);
+    const db = getDb();
+    if (!db || !Array.isArray(db.users)) {
+      return NextResponse.json(
+        { error: 'Database connection failed. Unable to retrieve storage records.' },
+        { status: 500 }
+      );
+    }
 
-  const totalToolUses = Object.values(db.toolUsage).reduce((acc: number, curr: number) => acc + curr, 0);
-  const messages = Array.isArray(db.contactMessages) ? db.contactMessages : [];
-  const unreadMessages = messages.filter((m) => m.status === 'unread').length;
+    // 2. Compute reliable visitor analytics from persistent storage
+    const visitorStats = getVisitorStats();
 
-  return NextResponse.json({
-    totalUsers: db.users.length,
-    users: db.users.map((u) => ({
+    // 3. Registered members information
+    const registeredMembers = db.users.length;
+    const usersList = db.users.map((u) => ({
       id: u.id,
       email: u.email,
       name: u.name,
@@ -60,12 +34,37 @@ export async function GET() {
       isManager: u.role === 'manager' || u.email.toLowerCase() === session.email.toLowerCase(),
       createdAt: u.createdAt,
       lastLoginAt: u.lastLoginAt,
-    })),
-    totalToolUses,
-    toolUsage: toolList,
-    recentEvents: db.events.slice(0, 50),
-    totalMessages: messages.length,
-    unreadMessages,
-    authenticatedAs: session.email,
-  });
+    }));
+
+    // 4. Contact messages summary
+    const messages = Array.isArray(db.contactMessages) ? db.contactMessages : [];
+    const unreadMessages = messages.filter((m) => m.status === 'unread').length;
+
+    return NextResponse.json({
+      // Core Website Visitor Analytics metrics
+      totalVisits: visitorStats.totalVisits,
+      uniqueVisitors: visitorStats.uniqueVisitors,
+      todayVisitors: visitorStats.todayVisitors,
+      registeredMembers,
+      totalUsers: registeredMembers,
+
+      // Visitor history logs (most recent 500 visits)
+      visits: visitorStats.visits.slice(0, 500),
+
+      // Registered members
+      users: usersList,
+
+      // Recent platform activity & messages
+      recentEvents: Array.isArray(db.events) ? db.events.slice(0, 50) : [],
+      totalMessages: messages.length,
+      unreadMessages,
+      authenticatedAs: session.email,
+    });
+  } catch (error) {
+    console.error('Failed to load manager analytics stats:', error);
+    return NextResponse.json(
+      { error: 'An unexpected database error occurred while loading analytics.' },
+      { status: 500 }
+    );
+  }
 }

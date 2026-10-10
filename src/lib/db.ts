@@ -39,11 +39,23 @@ export interface ContactMessage {
   updatedAt: string;
 }
 
+export interface PageVisitRecord {
+  id: string;
+  timestamp: string;
+  visitorHash: string;
+  maskedIp: string;
+  path: string;
+  referrer?: string;
+  userAgent?: string;
+  visitorSessionId?: string;
+}
+
 export interface DatabaseSchema {
   users: UserRecord[];
   toolUsage: Record<string, number>;
   events: ActivityEvent[];
   contactMessages: ContactMessage[];
+  visits: PageVisitRecord[];
 }
 
 const INITIAL_DB: DatabaseSchema = {
@@ -51,6 +63,7 @@ const INITIAL_DB: DatabaseSchema = {
   toolUsage: {},
   events: [],
   contactMessages: [],
+  visits: [],
 };
 
 // Global in-memory cache on globalThis for fast lookup and serverless resilience across hot-reloads
@@ -108,6 +121,7 @@ export function getDb(): DatabaseSchema {
           if (!parsed.toolUsage || typeof parsed.toolUsage !== 'object') parsed.toolUsage = {};
           if (!Array.isArray(parsed.events)) parsed.events = [];
           if (!Array.isArray(parsed.contactMessages)) parsed.contactMessages = [];
+          if (!Array.isArray(parsed.visits)) parsed.visits = [];
           globalForDb.__toolino_memory_db__ = parsed;
           return parsed;
         }
@@ -118,7 +132,7 @@ export function getDb(): DatabaseSchema {
   }
 
   if (!globalForDb.__toolino_memory_db__) {
-    globalForDb.__toolino_memory_db__ = { users: [], toolUsage: {}, events: [], contactMessages: [] };
+    globalForDb.__toolino_memory_db__ = { users: [], toolUsage: {}, events: [], contactMessages: [], visits: [] };
   }
   return globalForDb.__toolino_memory_db__;
 }
@@ -585,4 +599,114 @@ export function deleteContactMessage(id: string): { success: boolean; error?: st
 
   return { success: true };
 }
+
+// ============================================================
+// Website Visitor Tracking & Persistent Analytics
+// ============================================================
+
+export function recordPageVisit(data: {
+  visitorHash: string;
+  maskedIp: string;
+  path: string;
+  referrer?: string;
+  userAgent?: string;
+  visitorSessionId?: string;
+}): { success: boolean; visit?: PageVisitRecord; debounced?: boolean } {
+  const db = getDb();
+  if (!Array.isArray(db.visits)) {
+    db.visits = [];
+  }
+
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const normalizedPath = data.path.trim().toLowerCase();
+
+  // Deduplication / Debounce:
+  // If the same visitor hash visited the exact same path within the last 5 seconds,
+  // ignore as duplicate (covers React 19 Strict Mode effect double-invocation & rapid refresh)
+  const fiveSecondsAgo = now.getTime() - 5000;
+  const recentDuplicate = db.visits.find((v) => {
+    return (
+      v.visitorHash === data.visitorHash &&
+      v.path.toLowerCase() === normalizedPath &&
+      new Date(v.timestamp).getTime() > fiveSecondsAgo
+    );
+  });
+
+  if (recentDuplicate) {
+    return { success: true, visit: recentDuplicate, debounced: true };
+  }
+
+  const id = `vis_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const newVisit: PageVisitRecord = {
+    id,
+    timestamp: nowIso,
+    visitorHash: data.visitorHash,
+    maskedIp: data.maskedIp,
+    path: data.path.trim(),
+    referrer: data.referrer ? data.referrer.trim() : undefined,
+    userAgent: data.userAgent ? data.userAgent.slice(0, 150) : undefined,
+    visitorSessionId: data.visitorSessionId,
+  };
+
+  // Prepend newest visit first
+  db.visits.unshift(newVisit);
+
+  // Maintain bounded collection size (up to 10,000 visits) for fast memory access and file durability
+  if (db.visits.length > 10000) {
+    db.visits = db.visits.slice(0, 10000);
+  }
+
+  saveDb(db);
+  return { success: true, visit: newVisit };
+}
+
+export function getVisitorStats(): {
+  totalVisits: number;
+  uniqueVisitors: number;
+  todayVisitors: number;
+  visits: (PageVisitRecord & { visitCount: number })[];
+} {
+  const db = getDb();
+  const visits = Array.isArray(db.visits) ? db.visits : [];
+
+  // Calculate visit counts per visitorHash across all recorded history
+  const visitCountsByHash = new Map<string, number>();
+  for (const v of visits) {
+    visitCountsByHash.set(v.visitorHash, (visitCountsByHash.get(v.visitorHash) || 0) + 1);
+  }
+
+  const totalVisits = visits.length;
+  const uniqueVisitors = visitCountsByHash.size;
+
+  // Today's visitors: distinct visitor hashes recorded today
+  const now = new Date();
+  const startOfTodayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime();
+  const todayHashes = new Set<string>();
+
+  for (const v of visits) {
+    const visitTime = new Date(v.timestamp).getTime();
+    if (visitTime >= startOfTodayUtc) {
+      todayHashes.add(v.visitorHash);
+    }
+  }
+
+  const enrichedVisits = visits.map((v) => ({
+    ...v,
+    visitCount: visitCountsByHash.get(v.visitorHash) || 1,
+  }));
+
+  return {
+    totalVisits,
+    uniqueVisitors,
+    todayVisitors: todayHashes.size,
+    visits: enrichedVisits,
+  };
+}
+
+export function getRegisteredMembersCount(): number {
+  const db = getDb();
+  return Array.isArray(db.users) ? db.users.length : 0;
+}
+
 
