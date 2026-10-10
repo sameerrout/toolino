@@ -519,6 +519,30 @@ export function deleteUserByEmail(email: string): { success: boolean; user?: Use
   return deleteUserById(user.id);
 }
 
+export async function deleteUserByIdAsync(id: string): Promise<{ success: boolean; user?: UserRecord; error?: string }> {
+  const localResult = deleteUserById(id);
+  if (!localResult.success) return localResult;
+
+  if (prisma && process.env.DATABASE_URL) {
+    try {
+      await prisma.user.delete({ where: { id } });
+    } catch (err) {
+      console.warn('Prisma deleteUser failed:', err instanceof Error ? err.message : err);
+    }
+  }
+  return localResult;
+}
+
+export async function deleteUserByEmailAsync(email: string): Promise<{ success: boolean; user?: UserRecord; error?: string }> {
+  const normalized = email.trim().toLowerCase();
+  const db = getDb();
+  const user = db.users.find((u) => u.email.toLowerCase() === normalized);
+  if (!user) {
+    return { success: false, error: 'Member not found.' };
+  }
+  return deleteUserByIdAsync(user.id);
+}
+
 // ============================================================
 // Password Reset Functionality (Hashed Token Storage)
 // ============================================================
@@ -715,6 +739,73 @@ export function deleteContactMessage(id: string): { success: boolean; error?: st
   }
 
   return { success: true };
+}
+
+export async function getContactMessagesAsync(): Promise<ContactMessage[]> {
+  if (prisma && process.env.DATABASE_URL) {
+    try {
+      const dbMessages = await prisma.contactMessage.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+      return dbMessages.map((m) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        category: m.category,
+        message: m.message,
+        status: m.status as ContactMessageStatus,
+        createdAt: m.createdAt.toISOString(),
+        updatedAt: m.updatedAt.toISOString(),
+      }));
+    } catch (err) {
+      console.warn('Prisma getContactMessages failed; using local store:', err instanceof Error ? err.message : err);
+    }
+  }
+  return getContactMessages();
+}
+
+export async function updateContactMessageStatusAsync(
+  id: string,
+  status: ContactMessageStatus
+): Promise<{ success: boolean; message?: ContactMessage; error?: string }> {
+  const localResult = updateContactMessageStatus(id, status);
+  if (prisma && process.env.DATABASE_URL) {
+    try {
+      const updated = await prisma.contactMessage.update({
+        where: { id },
+        data: { status, updatedAt: new Date() },
+      });
+      return {
+        success: true,
+        message: {
+          id: updated.id,
+          name: updated.name,
+          email: updated.email,
+          category: updated.category,
+          message: updated.message,
+          status: updated.status as ContactMessageStatus,
+          createdAt: updated.createdAt.toISOString(),
+          updatedAt: updated.updatedAt.toISOString(),
+        },
+      };
+    } catch (err) {
+      console.warn('Prisma updateContactMessageStatus failed:', err instanceof Error ? err.message : err);
+    }
+  }
+  return localResult;
+}
+
+export async function deleteContactMessageAsync(id: string): Promise<{ success: boolean; error?: string }> {
+  const localResult = deleteContactMessage(id);
+  if (prisma && process.env.DATABASE_URL) {
+    try {
+      await prisma.contactMessage.delete({ where: { id } });
+      return { success: true };
+    } catch (err) {
+      console.warn('Prisma deleteContactMessage failed:', err instanceof Error ? err.message : err);
+    }
+  }
+  return localResult;
 }
 
 // ============================================================

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireManagerSession, isManagerEmail } from '@/lib/auth';
 import {
-  getContactMessages,
-  updateContactMessageStatus,
-  deleteContactMessage,
+  getContactMessagesAsync,
+  updateContactMessageStatusAsync,
+  deleteContactMessageAsync,
   type ContactMessageStatus,
 } from '@/lib/db';
 
@@ -24,7 +24,7 @@ export async function GET() {
     );
   }
 
-  const messages = getContactMessages();
+  const messages = await getContactMessagesAsync();
   const unreadCount = messages.filter((m) => m.status === 'unread').length;
 
   return NextResponse.json({
@@ -69,7 +69,7 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const result = updateContactMessageStatus(id, status as ContactMessageStatus);
+  const result = await updateContactMessageStatusAsync(id, status as ContactMessageStatus);
   if (!result.success || !result.message) {
     return NextResponse.json(
       { error: result.error || 'Message not found.' },
@@ -110,7 +110,7 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  const result = deleteContactMessage(id);
+  const result = await deleteContactMessageAsync(id);
   if (!result.success) {
     return NextResponse.json(
       { error: result.error || 'Message not found.' },

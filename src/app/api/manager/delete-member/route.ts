@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireManagerSession, isManagerEmail } from '@/lib/auth';
-import { deleteUserById, deleteUserByEmail } from '@/lib/db';
+import { deleteUserByIdAsync, deleteUserByEmailAsync } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
 
     // 3. Perform deletion with manager protection check
     const result = userId
-      ? deleteUserById(userId)
-      : deleteUserByEmail(email);
+      ? await deleteUserByIdAsync(userId)
+      : await deleteUserByEmailAsync(email);
 
     if (!result.success || !result.user) {
       return NextResponse.json(
