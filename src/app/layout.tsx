@@ -7,7 +7,6 @@ import { Footer } from '@/components/layout/Footer';
 import { ConsentProvider } from '@/components/consent/ConsentProvider';
 import { ConsentBanner } from '@/components/consent/ConsentBanner';
 import { Analytics } from '@/components/consent/Analytics';
-import { AdsenseLoader } from '@/components/ads/AdsenseLoader';
 import { AdSlotBudget } from '@/components/ads/AdSlot';
 import { VisitorTracker } from '@/components/analytics/VisitorTracker';
 import { JsonLd } from '@/components/seo/JsonLd';
@@ -44,6 +43,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-GB" className={inter.variable}>
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1239950394700538"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
         {/* Skip link: first focusable element on the page. */}
         <a
@@ -69,7 +75,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
 
           {/* Consent-gated: neither renders anything before a decision. */}
-          <AdsenseLoader />
           <Analytics />
           <AdSlotBudget />
           <ConsentBanner />
