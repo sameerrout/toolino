@@ -326,6 +326,28 @@ export function authenticateEmailUser(
       };
       db.users.push(activeUser);
       saveDb(db);
+
+      if (prisma?.user?.upsert && process.env.DATABASE_URL) {
+        prisma.user.upsert({
+          where: { email: activeUser.email },
+          update: {
+            passwordHash: activeUser.passwordHash,
+            role: 'manager',
+            lastLoginAt: new Date(),
+          },
+          create: {
+            id: activeUser.id,
+            email: activeUser.email,
+            name: activeUser.name,
+            authProvider: 'email',
+            passwordHash: activeUser.passwordHash,
+            role: 'manager',
+            createdAt: new Date(activeUser.createdAt),
+            lastLoginAt: new Date(activeUser.lastLoginAt),
+          },
+        }).catch(() => {});
+      }
+
       return { user: activeUser };
     }
     return { error: 'Invalid email or password.' };

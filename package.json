@@ -10,7 +10,7 @@
   "scripts": {
     "predev": "node scripts/generate-redirects.mjs",
     "dev": "next dev",
-    "prebuild": "prisma generate && node scripts/generate-icons.mjs && node scripts/generate-redirects.mjs",
+    "prebuild": "prisma generate && node scripts/deploy-migrate.mjs && node scripts/generate-icons.mjs && node scripts/generate-redirects.mjs",
     "build": "next build",
     "postbuild": "node scripts/check-bundle-size.mjs",
     "start": "next start",
