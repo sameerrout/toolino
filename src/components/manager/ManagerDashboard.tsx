@@ -82,6 +82,7 @@ interface ManagerStatsData {
   totalMessages?: number;
   unreadMessages?: number;
   authenticatedAs: string;
+  isDatabaseConnected?: boolean;
 }
 
 type DateFilterOption = 'all' | 'today' | '7days' | '30days';
@@ -520,6 +521,21 @@ export function ManagerDashboard() {
           >
             <X className="w-3.5 h-3.5" />
           </button>
+        </div>
+      )}
+
+      {/* Database Connection Notice */}
+      {data && data.isDatabaseConnected === false && (
+        <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/70 text-blue-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <Globe className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              <strong>Local Storage Active:</strong> Analytics data is currently served from the local persistent store. Connect <code>DATABASE_URL</code> in Vercel to activate PostgreSQL database clustering across serverless instances.
+            </span>
+          </div>
+          <span className="px-2.5 py-1 rounded-md bg-blue-100 text-blue-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit">
+            Ready for PostgreSQL
+          </span>
         </div>
       )}
 

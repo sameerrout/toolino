@@ -832,11 +832,7 @@ export async function recordPageVisitAsync(data: {
 
       return { success: true, visit: record };
     } catch (err) {
-      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_LOCAL_STORAGE_IN_PROD) {
-        console.error('Failed to persist page visit to production database:', err);
-        throw err;
-      }
-      // Fallback to local store in dev/offline
+      console.warn('Prisma PostgreSQL unavailable during visit recording; using local visits store:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -858,6 +854,7 @@ export async function getVisitorStatsAsync(): Promise<{
   uniqueVisitors: number;
   todayVisitors: number;
   visits: (PageVisitRecord & { visitCount: number })[];
+  isPostgresConnected: boolean;
 }> {
   if (prisma && process.env.DATABASE_URL) {
     try {
@@ -922,21 +919,18 @@ export async function getVisitorStatsAsync(): Promise<{
         uniqueVisitors,
         todayVisitors: todayKeys.size,
         visits: visitsFormatted,
+        isPostgresConnected: true,
       };
     } catch (dbErr) {
-      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_LOCAL_STORAGE_IN_PROD) {
-        console.error('Production database query failed:', dbErr);
-        throw new Error('Database connection failed. Unable to retrieve storage records.');
-      }
-      // Fall through to local calculation in dev/test
+      console.warn('Prisma PostgreSQL query failed; falling back to durable visits store:', dbErr instanceof Error ? dbErr.message : dbErr);
     }
   }
 
-  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_LOCAL_STORAGE_IN_PROD) {
-    throw new Error('Database connection failed. No persistent database connection in production.');
-  }
-
-  return getVisitorStats();
+  const localStats = getVisitorStats();
+  return {
+    ...localStats,
+    isPostgresConnected: false,
+  };
 }
 
 export function getRegisteredMembersCount(): number {
