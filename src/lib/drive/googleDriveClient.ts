@@ -1,9 +1,11 @@
 /**
  * Google Drive REST API v3 Client
  * 
- * Provides server-side authentication and file management for Google Drive.
- * Designed for ToolForForever using the target Google account sameerrout2004@gmail.com
- * and folder "ToolForForever_Data".
+ * Provides secure server-side OAuth authentication, folder provisioning,
+ * and resilient file read/write operations for ToolForForever.
+ * 
+ * Target Google Account: sameerrout2004@gmail.com
+ * Dedicated Drive Folder: ToolForForever_Data
  */
 
 export interface GoogleDriveConfig {
@@ -19,6 +21,7 @@ export interface DriveFileMetadata {
   name: string;
   modifiedTime?: string;
   size?: string;
+  md5Checksum?: string;
 }
 
 export interface GoogleDriveStatus {
@@ -28,6 +31,10 @@ export interface GoogleDriveStatus {
   folderId?: string;
   targetAccount: string;
   lastChecked: string;
+  hasClientId: boolean;
+  hasClientSecret: boolean;
+  hasRefreshToken: boolean;
+  clientIdFormat?: 'valid_google_client_id' | 'looks_like_secret' | 'unknown' | 'missing';
   error?: string;
 }
 
@@ -47,34 +54,106 @@ const globalForDrive = globalThis as unknown as {
 };
 
 /**
+ * Strips wrapping quotes, trailing whitespace, and normalizes environment strings.
+ */
+export function cleanEnv(val?: string | null): string {
+  if (!val || typeof val !== 'string') return '';
+  let trimmed = val.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
+/**
  * Resolves Google Drive OAuth credentials from environment variables.
+ * Automatically handles common variable naming variations and trims values.
  */
 export function getGoogleDriveConfig(): GoogleDriveConfig | null {
-  const clientId =
+  let clientId = cleanEnv(
     process.env.GOOGLE_DRIVE_CLIENT_ID ||
+    process.env.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID ||
     process.env.GOOGLE_CLIENT_ID ||
-    '';
-  const clientSecret =
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+  );
+
+  let clientSecret = cleanEnv(
     process.env.GOOGLE_DRIVE_CLIENT_SECRET ||
-    process.env.GOOGLE_CLIENT_SECRET ||
-    '';
-  const refreshToken =
-    process.env.GOOGLE_DRIVE_REFRESH_TOKEN ||
-    '';
-  const folderName =
-    process.env.GOOGLE_DRIVE_FOLDER_NAME ||
-    DEFAULT_FOLDER_NAME;
+    process.env.GOOGLE_CLIENT_SECRET
+  );
+
+  const refreshToken = cleanEnv(
+    process.env.GOOGLE_DRIVE_REFRESH_TOKEN
+  );
+
+  const folderName = cleanEnv(
+    process.env.GOOGLE_DRIVE_FOLDER_NAME
+  ) || DEFAULT_FOLDER_NAME;
+
+  // Auto-recovery if Client ID and Client Secret were accidentally swapped in Vercel:
+  // Google Client IDs end in .apps.googleusercontent.com, whereas secrets start with GOCSPX-
+  if (
+    clientId.startsWith('GOCSPX-') &&
+    clientSecret.includes('.apps.googleusercontent.com')
+  ) {
+    console.warn('[GoogleDrive] Detected swapped Client ID and Client Secret. Automatically reordering.');
+    const temp = clientId;
+    clientId = clientSecret;
+    clientSecret = temp;
+  }
 
   if (!clientId || !clientSecret || !refreshToken) {
     return null;
   }
 
   return {
-    clientId: clientId.trim(),
-    clientSecret: clientSecret.trim(),
-    refreshToken: refreshToken.trim(),
-    folderName: folderName.trim(),
+    clientId,
+    clientSecret,
+    refreshToken,
+    folderName,
     targetAccount: TARGET_GOOGLE_ACCOUNT,
+  };
+}
+
+/**
+ * Diagnostic helper that checks variable presence without exposing secret contents.
+ */
+export function getDriveEnvDiagnostics() {
+  const rawClientId = cleanEnv(
+    process.env.GOOGLE_DRIVE_CLIENT_ID ||
+    process.env.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID ||
+    process.env.GOOGLE_CLIENT_ID ||
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+  );
+  const rawClientSecret = cleanEnv(
+    process.env.GOOGLE_DRIVE_CLIENT_SECRET ||
+    process.env.GOOGLE_CLIENT_SECRET
+  );
+  const rawRefreshToken = cleanEnv(
+    process.env.GOOGLE_DRIVE_REFRESH_TOKEN
+  );
+
+  let clientIdFormat: 'valid_google_client_id' | 'looks_like_secret' | 'unknown' | 'missing' = 'missing';
+  if (rawClientId) {
+    if (rawClientId.includes('.apps.googleusercontent.com') || rawClientId.includes('.googleusercontent.com')) {
+      clientIdFormat = 'valid_google_client_id';
+    } else if (rawClientId.startsWith('GOCSPX-')) {
+      clientIdFormat = 'looks_like_secret';
+    } else {
+      clientIdFormat = 'unknown';
+    }
+  }
+
+  return {
+    hasClientId: Boolean(rawClientId),
+    hasClientSecret: Boolean(rawClientSecret),
+    hasRefreshToken: Boolean(rawRefreshToken),
+    clientIdFormat,
+    targetAccount: TARGET_GOOGLE_ACCOUNT,
+    folderName: cleanEnv(process.env.GOOGLE_DRIVE_FOLDER_NAME) || DEFAULT_FOLDER_NAME,
   };
 }
 
@@ -86,7 +165,7 @@ export async function getValidAccessToken(config?: GoogleDriveConfig): Promise<s
   const cfg = config || getGoogleDriveConfig();
   if (!cfg) {
     throw new Error(
-      'Google Drive API credentials not configured. Please set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN.'
+      'Google Drive API credentials not configured. Please set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN in Vercel.'
     );
   }
 
@@ -229,7 +308,7 @@ export async function findFileInFolder(
   const token = await getValidAccessToken();
 
   const query = `name = '${fileName.replace(/'/g, "\\'")}' and '${parentFolderId}' in parents and trashed = false`;
-  const url = `${DRIVE_FILES_ENDPOINT}?q=${encodeURIComponent(query)}&fields=files(id,name,modifiedTime,size)&spaces=drive`;
+  const url = `${DRIVE_FILES_ENDPOINT}?q=${encodeURIComponent(query)}&fields=files(id,name,modifiedTime,size,md5Checksum)&spaces=drive`;
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -287,73 +366,91 @@ export async function readJsonFromDrive<T>(
 }
 
 /**
- * Writes or updates a JSON file in Google Drive.
- * Uses atomic multipart upload for file creation and media upload for updates.
+ * Writes or updates a JSON file in Google Drive with exponential backoff retries.
  */
 export async function writeJsonToDrive(
   fileName: string,
   content: unknown,
-  parentFolderId?: string
+  parentFolderId?: string,
+  maxRetries = 3
 ): Promise<{ fileId: string }> {
-  const folderId = parentFolderId || (await getRootDataFolderId());
-  const token = await getValidAccessToken();
-  const fileMeta = await findFileInFolder(fileName, folderId);
-  const serialized = JSON.stringify(content, null, 2);
+  let attempt = 0;
+  let lastError: unknown;
 
-  if (fileMeta) {
-    // Update existing file content
-    const updateUrl = `${DRIVE_UPLOAD_ENDPOINT}/${fileMeta.id}?uploadType=media`;
-    const updateRes = await fetch(updateUrl, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: serialized,
-    });
+  while (attempt < maxRetries) {
+    attempt++;
+    try {
+      const folderId = parentFolderId || (await getRootDataFolderId());
+      const token = await getValidAccessToken();
+      const fileMeta = await findFileInFolder(fileName, folderId);
+      const serialized = JSON.stringify(content, null, 2);
 
-    if (!updateRes.ok) {
-      const errText = await updateRes.text();
-      throw new Error(`Failed to update '${fileName}' in Google Drive: ${errText}`);
+      if (fileMeta) {
+        // Update existing file content
+        const updateUrl = `${DRIVE_UPLOAD_ENDPOINT}/${fileMeta.id}?uploadType=media`;
+        const updateRes = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: serialized,
+        });
+
+        if (!updateRes.ok) {
+          const errText = await updateRes.text();
+          throw new Error(`Failed to update '${fileName}' in Google Drive: ${errText}`);
+        }
+
+        return { fileId: fileMeta.id };
+      }
+
+      // Create new file via multipart upload
+      const boundary = `-------toolino_drive_boundary_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const metadata = JSON.stringify({
+        name: fileName,
+        parents: [folderId],
+        mimeType: 'application/json',
+      });
+
+      const multipartBody =
+        `--${boundary}\r\n` +
+        `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+        `${metadata}\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+        `${serialized}\r\n` +
+        `--${boundary}--`;
+
+      const uploadUrl = `${DRIVE_UPLOAD_ENDPOINT}?uploadType=multipart`;
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`,
+        },
+        body: multipartBody,
+      });
+
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        throw new Error(`Failed to create '${fileName}' in Google Drive: ${errText}`);
+      }
+
+      const createdData = await uploadRes.json();
+      return { fileId: createdData.id };
+    } catch (err) {
+      lastError = err;
+      if (attempt >= maxRetries) {
+        break;
+      }
+      // Exponential backoff delay with jitter
+      const delay = Math.pow(2, attempt) * 200 + Math.random() * 100;
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
-
-    return { fileId: fileMeta.id };
   }
 
-  // Create new file via multipart upload
-  const boundary = `-------toolino_drive_boundary_${Date.now()}`;
-  const metadata = JSON.stringify({
-    name: fileName,
-    parents: [folderId],
-    mimeType: 'application/json',
-  });
-
-  const multipartBody =
-    `--${boundary}\r\n` +
-    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-    `${metadata}\r\n` +
-    `--${boundary}\r\n` +
-    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-    `${serialized}\r\n` +
-    `--${boundary}--`;
-
-  const uploadUrl = `${DRIVE_UPLOAD_ENDPOINT}?uploadType=multipart`;
-  const uploadRes = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': `multipart/related; boundary=${boundary}`,
-    },
-    body: multipartBody,
-  });
-
-  if (!uploadRes.ok) {
-    const errText = await uploadRes.text();
-    throw new Error(`Failed to create '${fileName}' in Google Drive: ${errText}`);
-  }
-
-  const createdData = await uploadRes.json();
-  return { fileId: createdData.id };
+  throw new Error(`Google Drive write to '${fileName}' failed after ${maxRetries} attempts: ${lastError}`);
 }
 
 /**
@@ -372,22 +469,36 @@ export async function createDriveBackup(
 }
 
 /**
- * Checks the live connectivity to Google Drive.
+ * Checks the live connectivity and environment diagnostics for Google Drive.
  */
 export async function checkGoogleDriveHealth(): Promise<GoogleDriveStatus> {
+  const diagnostics = getDriveEnvDiagnostics();
   const cfg = getGoogleDriveConfig();
   const targetAccount = TARGET_GOOGLE_ACCOUNT;
-  const folderName = cfg?.folderName || DEFAULT_FOLDER_NAME;
+  const folderName = diagnostics.folderName;
   const now = new Date().toISOString();
 
   if (!cfg) {
+    let error = 'Google Drive credentials not set in environment.';
+    if (!diagnostics.hasClientId) {
+      error = 'GOOGLE_DRIVE_CLIENT_ID is missing or not exposed in this environment.';
+    } else if (!diagnostics.hasClientSecret) {
+      error = 'GOOGLE_DRIVE_CLIENT_SECRET is missing.';
+    } else if (!diagnostics.hasRefreshToken) {
+      error = 'GOOGLE_DRIVE_REFRESH_TOKEN is missing (run OAuth authorization flow).';
+    }
+
     return {
       configured: false,
       connected: false,
       folderName,
       targetAccount,
       lastChecked: now,
-      error: 'Google Drive credentials not set in environment (GOOGLE_DRIVE_REFRESH_TOKEN missing).',
+      hasClientId: diagnostics.hasClientId,
+      hasClientSecret: diagnostics.hasClientSecret,
+      hasRefreshToken: diagnostics.hasRefreshToken,
+      clientIdFormat: diagnostics.clientIdFormat,
+      error,
     };
   }
 
@@ -400,6 +511,10 @@ export async function checkGoogleDriveHealth(): Promise<GoogleDriveStatus> {
       folderId,
       targetAccount,
       lastChecked: now,
+      hasClientId: true,
+      hasClientSecret: true,
+      hasRefreshToken: true,
+      clientIdFormat: diagnostics.clientIdFormat,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -409,6 +524,10 @@ export async function checkGoogleDriveHealth(): Promise<GoogleDriveStatus> {
       folderName,
       targetAccount,
       lastChecked: now,
+      hasClientId: true,
+      hasClientSecret: true,
+      hasRefreshToken: true,
+      clientIdFormat: diagnostics.clientIdFormat,
       error: msg,
     };
   }
