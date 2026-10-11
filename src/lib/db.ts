@@ -11,19 +11,18 @@ import {
 } from '@/lib/analytics/visitsStore';
 import { REPORTING_TIMEZONE } from '@/lib/analytics/visitor';
 import {
-  loadDriveDatabase,
-  saveDriveDatabase,
-  mutateDriveDatabase,
-  isGoogleDriveConfigured,
-  DEFAULT_FOLDER_NAME,
-  TARGET_GOOGLE_ACCOUNT,
+  loadGmailDatabase,
+  saveGmailDatabase,
+  mutateGmailDatabase,
+  isGmailStorageConfigured,
+    TARGET_GMAIL_ACCOUNT,
   type DatabaseSchema,
   type UserRecord,
   type ActivityEvent,
   type ContactMessage,
   type ContactMessageStatus,
   type PageVisitRecord,
-} from '@/lib/drive/driveStore';
+} from '@/lib/gmail/gmailStore';
 
 export type {
   DatabaseSchema,
@@ -126,8 +125,8 @@ export function saveDb(data: DatabaseSchema): void {
  * Primary asynchronous database loader: loads strictly from Google Drive if configured.
  */
 export async function getDbAsync(): Promise<DatabaseSchema> {
-  if (isGoogleDriveConfigured()) {
-    return loadDriveDatabase();
+  if (isGmailStorageConfigured()) {
+    return loadGmailDatabase();
   }
   return getDb();
 }
@@ -136,8 +135,8 @@ export async function getDbAsync(): Promise<DatabaseSchema> {
  * Primary asynchronous database saver: writes strictly to Google Drive if configured.
  */
 export async function saveDbAsync(data: DatabaseSchema): Promise<void> {
-  if (isGoogleDriveConfigured()) {
-    await saveDriveDatabase(data);
+  if (isGmailStorageConfigured()) {
+    await saveGmailDatabase(data);
     return;
   }
   saveDb(data);
@@ -235,7 +234,7 @@ export function registerEmailUser(
   if (db.events.length > 200) db.events = db.events.slice(0, 200);
   saveDb(db);
 
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch((err) => console.error('Failed to sync registered user to Google Drive:', err));
   }
 
@@ -247,8 +246,8 @@ export async function registerEmailUserAsync(
   password: string,
   name?: string
 ): Promise<{ user?: UserRecord; error?: string }> {
-  if (isGoogleDriveConfigured()) {
-    return mutateDriveDatabase(async (db) => {
+  if (isGmailStorageConfigured()) {
+    return mutateGmailDatabase(async (db) => {
       const normalizedEmail = email.trim().toLowerCase();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(normalizedEmail)) {
@@ -325,7 +324,7 @@ export function authenticateEmailUser(
       };
       db.users.push(activeUser);
       saveDb(db);
-      if (isGoogleDriveConfigured()) {
+      if (isGmailStorageConfigured()) {
         saveDbAsync(db).catch(() => {});
       }
       return { user: activeUser };
@@ -352,7 +351,7 @@ export function authenticateEmailUser(
   });
   if (db.events.length > 200) db.events = db.events.slice(0, 200);
   saveDb(db);
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch(() => {});
   }
 
@@ -390,7 +389,7 @@ export function recordUserLogin(user: {
     });
     if (db.events.length > 200) db.events = db.events.slice(0, 200);
     saveDb(db);
-    if (isGoogleDriveConfigured()) {
+    if (isGmailStorageConfigured()) {
       saveDbAsync(db).catch(() => {});
     }
     return { user: existing, isNewUser: false };
@@ -415,7 +414,7 @@ export function recordUserLogin(user: {
   });
   if (db.events.length > 200) db.events = db.events.slice(0, 200);
   saveDb(db);
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch(() => {});
   }
 
@@ -439,14 +438,14 @@ export function recordToolUsage(toolSlug: string, email?: string): void {
   }
   saveDb(db);
 
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch(() => {});
   }
 }
 
 export async function recordToolUsageAsync(toolSlug: string, email?: string): Promise<void> {
-  if (isGoogleDriveConfigured()) {
-    await mutateDriveDatabase((db) => {
+  if (isGmailStorageConfigured()) {
+    await mutateGmailDatabase((db) => {
       db.toolUsage[toolSlug] = (db.toolUsage[toolSlug] || 0) + 1;
       db.events.unshift({
         timestamp: new Date().toISOString(),
@@ -491,15 +490,15 @@ export function deleteUserById(id: string): { success: boolean; user?: UserRecor
   }
 
   saveDb(db);
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch(() => {});
   }
   return { success: true, user: deletedUser };
 }
 
 export async function deleteUserByIdAsync(id: string): Promise<{ success: boolean; user?: UserRecord; error?: string }> {
-  if (isGoogleDriveConfigured()) {
-    return mutateDriveDatabase((db) => {
+  if (isGmailStorageConfigured()) {
+    return mutateGmailDatabase((db) => {
       const index = db.users.findIndex((u) => u.id === id);
       if (index === -1) {
         return { success: false, error: 'Member not found.' };
@@ -561,7 +560,7 @@ export function createPasswordResetToken(email: string): { success: boolean; tok
   user.resetTokenExpires = expires;
   saveDb(db);
 
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch(() => {});
   }
 
@@ -613,7 +612,7 @@ export function resetPasswordWithToken(
   user.resetTokenExpires = undefined;
   saveDb(db);
 
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch(() => {});
   }
 
@@ -651,7 +650,7 @@ export function createContactMessage(data: {
   db.contactMessages.unshift(newMsg);
   saveDb(db);
 
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch(() => {});
   }
 
@@ -664,8 +663,8 @@ export async function createContactMessageAsync(data: {
   category: string;
   message: string;
 }): Promise<ContactMessage> {
-  if (isGoogleDriveConfigured()) {
-    return mutateDriveDatabase((db) => {
+  if (isGmailStorageConfigured()) {
+    return mutateGmailDatabase((db) => {
       const now = new Date().toISOString();
       const id = `msg_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
       const newMsg: ContactMessage = {
@@ -724,7 +723,7 @@ export function updateContactMessageStatus(
   target.updatedAt = new Date().toISOString();
   saveDb(db);
 
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch(() => {});
   }
 
@@ -745,7 +744,7 @@ export function deleteContactMessage(id: string): { success: boolean; error?: st
   db.contactMessages.splice(index, 1);
   saveDb(db);
 
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     saveDbAsync(db).catch(() => {});
   }
 
@@ -766,8 +765,8 @@ export async function updateContactMessageStatusAsync(
   id: string,
   status: ContactMessageStatus
 ): Promise<{ success: boolean; message?: ContactMessage; error?: string }> {
-  if (isGoogleDriveConfigured()) {
-    return mutateDriveDatabase((db) => {
+  if (isGmailStorageConfigured()) {
+    return mutateGmailDatabase((db) => {
       const validStatuses: ContactMessageStatus[] = ['unread', 'read', 'replied', 'resolved'];
       if (!validStatuses.includes(status)) {
         return { success: false, error: 'Invalid status value.' };
@@ -785,8 +784,8 @@ export async function updateContactMessageStatusAsync(
 }
 
 export async function deleteContactMessageAsync(id: string): Promise<{ success: boolean; error?: string }> {
-  if (isGoogleDriveConfigured()) {
-    return mutateDriveDatabase((db) => {
+  if (isGmailStorageConfigured()) {
+    return mutateGmailDatabase((db) => {
       if (!Array.isArray(db.contactMessages)) {
         return { success: false, error: 'Message not found.' };
       }
@@ -853,8 +852,8 @@ export async function recordPageVisitAsync(data: {
   const visitorKey = data.visitorSessionId || data.visitorHash;
   const normalizedPath = data.path.trim();
 
-  if (isGoogleDriveConfigured()) {
-    return mutateDriveDatabase(async (db) => {
+  if (isGmailStorageConfigured()) {
+    return mutateGmailDatabase(async (db) => {
       const isDuplicate = isRecentDuplicateVisit(
         visitorKey,
         normalizedPath,
@@ -918,21 +917,21 @@ export async function getVisitorStatsAsync(): Promise<{
   targetAccount: string;
   errorMessage?: string;
 }> {
-  if (isGoogleDriveConfigured()) {
+  if (isGmailStorageConfigured()) {
     try {
-      const db = await loadDriveDatabase();
+      const db = await loadGmailDatabase();
       const analytics = calculateVisitorAnalytics(REPORTING_TIMEZONE, new Date(), db.visits);
       return {
         ...analytics,
         isDriveConnected: true,
         databaseStatus: 'connected',
-        storageProvider: 'Google Drive',
-        folderName: DEFAULT_FOLDER_NAME,
-        targetAccount: TARGET_GOOGLE_ACCOUNT,
+        storageProvider: 'Gmail API Storage',
+        folderName: 'ToolForForever/Metadata',
+        targetAccount: TARGET_GMAIL_ACCOUNT,
       };
     } catch (dbErr) {
       const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
-      console.warn('Google Drive database read failed:', msg);
+      console.warn('Gmail storage database read failed:', msg);
       return {
         totalVisits: 0,
         uniqueVisitors: 0,
@@ -940,9 +939,9 @@ export async function getVisitorStatsAsync(): Promise<{
         visits: [],
         isDriveConnected: false,
         databaseStatus: 'query_failed',
-        storageProvider: 'Google Drive',
-        folderName: DEFAULT_FOLDER_NAME,
-        targetAccount: TARGET_GOOGLE_ACCOUNT,
+        storageProvider: 'Gmail API Storage',
+        folderName: 'ToolForForever/Metadata',
+        targetAccount: TARGET_GMAIL_ACCOUNT,
         errorMessage: msg,
       };
     }
@@ -953,11 +952,11 @@ export async function getVisitorStatsAsync(): Promise<{
     ...localStats,
     isDriveConnected: false,
     databaseStatus: 'unconfigured',
-    storageProvider: 'Google Drive',
-    folderName: DEFAULT_FOLDER_NAME,
-    targetAccount: TARGET_GOOGLE_ACCOUNT,
+    storageProvider: 'Gmail API Storage',
+    folderName: 'ToolForForever/Metadata',
+    targetAccount: TARGET_GMAIL_ACCOUNT,
     errorMessage:
-      'Google Drive API credentials not configured in Vercel. Set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN.',
+      'Gmail Storage API credentials not configured in Vercel. Set GMAIL_STORAGE_CLIENT_ID, GMAIL_STORAGE_CLIENT_SECRET, and GMAIL_STORAGE_REFRESH_TOKEN.',
   };
 }
 

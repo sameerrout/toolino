@@ -32,8 +32,8 @@
     "redirects": "node scripts/generate-redirects.mjs",
     "vendor-models": "node scripts/vendor-models.mjs",
     "check:size": "node scripts/check-bundle-size.mjs",
-    "migrate:drive": "node scripts/migrate-to-drive.mjs",
-    "verify:drive": "node scripts/verify-drive.mjs",
+    "migrate:gmail": "node scripts/migrate-to-gmail.mjs",
+    "verify:gmail": "node scripts/verify-gmail.mjs",
     "verify": "npm run type-check && npm run lint && npm run test:unit && npm run build",
     "clean": "node scripts/clean.mjs",
     "deploy": "bash deploy/deploy.sh"

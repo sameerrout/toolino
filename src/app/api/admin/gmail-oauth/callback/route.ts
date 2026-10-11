@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   resolveServerEnv,
-  getRootDataFolderId,
-  DEFAULT_FOLDER_NAME,
-  TARGET_GOOGLE_ACCOUNT,
-} from '@/lib/drive/googleDriveClient';
+  ensureGmailLabels,
+  TARGET_GMAIL_ACCOUNT,
+} from '@/lib/gmail/gmailClient';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,17 +15,19 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error');
 
   const clientIdMatch = resolveServerEnv([
-    'GOOGLE_DRIVE_CLIENT_ID',
+    'GMAIL_STORAGE_CLIENT_ID',
+    'GMAIL_CLIENT_ID',
     'GOOGLE_CLIENT_ID',
-    'GDRIVE_CLIENT_ID',
-    'NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID',
+    'GOOGLE_DRIVE_CLIENT_ID',
+    'NEXT_PUBLIC_GMAIL_STORAGE_CLIENT_ID',
     'NEXT_PUBLIC_GOOGLE_CLIENT_ID',
   ]);
 
   const clientSecretMatch = resolveServerEnv([
-    'GOOGLE_DRIVE_CLIENT_SECRET',
+    'GMAIL_STORAGE_CLIENT_SECRET',
+    'GMAIL_CLIENT_SECRET',
     'GOOGLE_CLIENT_SECRET',
-    'GDRIVE_CLIENT_SECRET',
+    'GOOGLE_DRIVE_CLIENT_SECRET',
   ]);
 
   const clientId = clientIdMatch?.value || '';
@@ -36,19 +37,19 @@ export async function GET(request: NextRequest) {
   const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
   const protocol = isLocal ? 'http' : 'https';
   const canonicalHost = isLocal ? host : 'www.toolforforever.com';
-  const redirectUri = `${protocol}://${canonicalHost}/api/admin/drive-oauth/callback`;
+  const redirectUri = `${protocol}://${canonicalHost}/api/admin/gmail-oauth/callback`;
 
   // 1. Handle error response from Google
   if (error) {
     return new NextResponse(
       `<!DOCTYPE html>
       <html lang="en">
-        <head><title>Google Drive Authorization Failed</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <head><title>Gmail Storage Authorization Failed</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
         <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 24px; color: #1e293b; background: #f8fafc;">
           <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
             <h2 style="color: #b91c1c; margin-top: 0;">Authorization Cancelled or Denied</h2>
             <p>Google returned an error: <strong>${error}</strong></p>
-            <a href="/api/admin/drive-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Retry Authorization</a>
+            <a href="/api/admin/gmail-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Retry Authorization</a>
           </div>
         </body>
       </html>`,
@@ -57,9 +58,8 @@ export async function GET(request: NextRequest) {
   }
 
   // 2. CSRF State Validation
-  const storedState = request.cookies.get('tff_oauth_state')?.value;
+  const storedState = request.cookies.get('tff_gmail_oauth_state')?.value;
   if (!incomingState || !storedState || incomingState !== storedState) {
-    // Only bypass state check in isolated test environments
     if (process.env.NODE_ENV !== 'test') {
       return new NextResponse(
         `<!DOCTYPE html>
@@ -69,8 +69,7 @@ export async function GET(request: NextRequest) {
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
               <h2 style="color: #b91c1c; margin-top: 0;">OAuth State Validation Failed</h2>
               <p>The authorization request could not be validated or has expired (CSRF protection).</p>
-              <p>Please restart the authorization process by clicking below:</p>
-              <a href="/api/admin/drive-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Restart Authorization</a>
+              <a href="/api/admin/gmail-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Restart Authorization</a>
             </div>
           </body>
         </html>`,
@@ -107,8 +106,7 @@ export async function GET(request: NextRequest) {
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
               <h2 style="color: #b91c1c; margin-top: 0;">Google Token Exchange Failed</h2>
               <pre style="background: #f1f5f9; padding: 16px; border-radius: 8px; overflow-x: auto;">${errText}</pre>
-              <p>Please confirm that <code>GOOGLE_DRIVE_CLIENT_SECRET</code> matches your Google Cloud Console Client Secret exactly.</p>
-              <a href="/api/admin/drive-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Try Again</a>
+              <a href="/api/admin/gmail-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Try Again</a>
             </div>
           </body>
         </html>`,
@@ -120,14 +118,15 @@ export async function GET(request: NextRequest) {
     const refreshToken = (tokenData.refresh_token as string) || '';
     const accessToken = (tokenData.access_token as string) || '';
 
-    // If access token was received, immediately verify / provision target Google Drive folder
-    let folderProvisionStatus = '';
+    // 4. Provision Gmail labels immediately with access token
+    let labelProvisionStatus = '';
     if (accessToken) {
       try {
-        const folderId = await getRootDataFolderId(accessToken);
-        folderProvisionStatus = `Verified dedicated folder '${DEFAULT_FOLDER_NAME}' (Folder ID: ${folderId}) in Google Drive.`;
-      } catch (fErr) {
-        folderProvisionStatus = `Note: Folder check will complete once refresh token is active (${fErr instanceof Error ? fErr.message : String(fErr)}).`;
+        const labelMap = await ensureGmailLabels(accessToken);
+        const labelCount = Object.keys(labelMap).length;
+        labelProvisionStatus = `Successfully provisioned ${labelCount} storage labels under 'ToolForForever/*' in ${TARGET_GMAIL_ACCOUNT}.`;
+      } catch (lErr) {
+        labelProvisionStatus = `Labels will be provisioned once refresh token is saved (${lErr instanceof Error ? lErr.message : String(lErr)}).`;
       }
     }
 
@@ -136,7 +135,7 @@ export async function GET(request: NextRequest) {
       <html lang="en">
         <head>
           <meta charset="utf-8" />
-          <title>Google Drive Connected — ToolForForever</title>
+          <title>Gmail Storage Connected — ToolForForever</title>
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 680px; margin: 40px auto; padding: 24px; color: #0f172a; line-height: 1.6; background: #f8fafc; }
@@ -151,11 +150,11 @@ export async function GET(request: NextRequest) {
         <body>
           <div class="card">
             <span class="badge-success">OAuth Authorization Successful</span>
-            <h2 style="margin: 0 0 8px; color: #0f172a;">Google Drive Connected!</h2>
+            <h2 style="margin: 0 0 8px; color: #0f172a;">Gmail Storage Connected!</h2>
             <p style="color: #475569; margin-top: 0;">
-              Account: <strong>${TARGET_GOOGLE_ACCOUNT}</strong> | Dedicated Folder: <strong>${DEFAULT_FOLDER_NAME}</strong>
+              Account: <strong>${TARGET_GMAIL_ACCOUNT}</strong> | Labels: <strong>ToolForForever/*</strong>
             </p>
-            ${folderProvisionStatus ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; color: #166534; font-size: 13px; margin: 12px 0;">&#10004; ${folderProvisionStatus}</div>` : ''}
+            ${labelProvisionStatus ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; color: #166534; font-size: 13px; margin: 12px 0;">&#10004; ${labelProvisionStatus}</div>` : ''}
 
             ${
               refreshToken
@@ -166,7 +165,7 @@ export async function GET(request: NextRequest) {
                   </div>
                   <div class="step">
                     <strong>Step 2: Save in Vercel Environment Variables</strong>
-                    <p style="margin: 6px 0; font-size: 14px;">Key: <code>GOOGLE_DRIVE_REFRESH_TOKEN</code></p>
+                    <p style="margin: 6px 0; font-size: 14px;">Key: <code>GMAIL_STORAGE_REFRESH_TOKEN</code></p>
                     <p style="margin: 6px 0; font-size: 14px;">Value: <em>(The copied refresh token above)</em></p>
                     <p style="margin: 6px 0; font-size: 13px; color: #64748b;">Ensure <strong>Production</strong> is checked, then trigger a <strong>Redeploy</strong> in Vercel.</p>
                   </div>`
@@ -175,13 +174,13 @@ export async function GET(request: NextRequest) {
                     <br /><br />
                     1. Visit <a href="https://myaccount.google.com/permissions" target="_blank" style="color: #b45309; font-weight: 600;">Google Account Permissions</a> &rarr; remove <strong>ToolForForever</strong>.
                     <br />
-                    2. <a href="/api/admin/drive-oauth/connect" style="color: #2563eb; font-weight: 600;">Click here to reconnect and generate a new token</a>.
+                    2. <a href="/api/admin/gmail-oauth/connect" style="color: #2563eb; font-weight: 600;">Click here to reconnect and generate a new token</a>.
                   </div>`
             }
 
             <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px;">
               <a href="/manager" style="display: inline-block; padding: 10px 18px; background: #0f172a; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">Go to Manager Dashboard</a>
-              <a href="/api/admin/drive-oauth/status" target="_blank" style="display: inline-block; padding: 10px 18px; background: #e2e8f0; color: #0f172a; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">Check Live Storage Status</a>
+              <a href="/api/admin/gmail-oauth/status" target="_blank" style="display: inline-block; padding: 10px 18px; background: #e2e8f0; color: #0f172a; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">Check Live Storage Status</a>
             </div>
           </div>
         </body>
@@ -189,8 +188,7 @@ export async function GET(request: NextRequest) {
       { headers: { 'Content-Type': 'text/html; charset=UTF-8' } }
     );
 
-    // Clear state cookie
-    htmlResponse.cookies.delete('tff_oauth_state');
+    htmlResponse.cookies.delete('tff_gmail_oauth_state');
     return htmlResponse;
   } catch (err) {
     return new NextResponse(`Error processing OAuth callback: ${err}`, { status: 500 });

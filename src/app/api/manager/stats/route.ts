@@ -73,18 +73,18 @@ export async function GET(request?: NextRequest) {
         unreadMessages,
         authenticatedAs: session.email,
 
-        // Google Drive Storage Status
+        // Gmail API Storage Status
         isDatabaseConnected: visitorStats.isDriveConnected,
         databaseStatus: visitorStats.databaseStatus,
         databaseError: visitorStats.errorMessage,
-        storageProvider: 'Google Drive',
+        storageProvider: 'Gmail API Storage',
         folderName: visitorStats.folderName,
         targetAccount: visitorStats.targetAccount,
         databaseProvider: visitorStats.isDriveConnected
-          ? `Google Drive (${visitorStats.folderName})`
+          ? `Gmail API Storage (${visitorStats.targetAccount})`
           : visitorStats.databaseStatus === 'query_failed'
-          ? 'Google Drive API Connection Error'
-          : 'Google Drive Awaiting Setup',
+          ? 'Gmail API Connection Error'
+          : 'Gmail Storage Awaiting Setup',
       },
       {
         headers: {

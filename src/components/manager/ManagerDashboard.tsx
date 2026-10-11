@@ -599,12 +599,12 @@ export function ManagerDashboard() {
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
-                <strong>Google Drive Persistent Storage Active:</strong> All visitor analytics, member accounts, contact messages, and activity events are stored exclusively in Google Drive folder <code>{data.folderName || 'ToolForForever_Data'}</code> ({data.targetAccount || 'sameerrout2004@gmail.com'}).
-                {data.totalVisits === 0 && ' (Drive database is newly initialized and ready to record events).'}
+                <strong>Gmail Persistent Storage Active:</strong> All visitor analytics, member accounts, contact messages, and activity events are stored in Gmail API messages in <code>{data.targetAccount || 'sameerrout2006@gmail.com'}</code> under labels <code>ToolForForever/*</code>.
+                {data.totalVisits === 0 && ' (Gmail storage is newly initialized and ready to record events).'}
               </span>
             </div>
             <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit">
-              Google Drive Active
+              Gmail Storage Active
             </span>
           </div>
         ) : (
@@ -612,20 +612,20 @@ export function ManagerDashboard() {
             <div className="flex items-center gap-2.5">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
-                <strong>Google Drive Awaiting Configuration:</strong> Production persistence requires Google Drive API credentials for <code>sameerrout2004@gmail.com</code> (Folder: <code>ToolForForever_Data</code>). Configure <code>GOOGLE_DRIVE_CLIENT_ID</code>, <code>GOOGLE_DRIVE_CLIENT_SECRET</code>, and <code>GOOGLE_DRIVE_REFRESH_TOKEN</code> in Vercel to activate cloud persistence.
+                <strong>Gmail Storage Awaiting Configuration:</strong> Production persistence requires Gmail API credentials for <code>sameerrout2006@gmail.com</code> (Labels: <code>ToolForForever/*</code>). Configure <code>GMAIL_STORAGE_CLIENT_ID</code>, <code>GMAIL_STORAGE_CLIENT_SECRET</code>, and <code>GMAIL_STORAGE_REFRESH_TOKEN</code> in Vercel to activate cloud persistence.
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <a
-                href="/api/admin/drive-oauth/connect"
+                href="/api/admin/gmail-oauth/connect"
                 target="_blank"
                 rel="noreferrer"
                 className="px-2.5 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold text-2xs uppercase tracking-wider transition"
               >
-                Connect Drive
+                Connect Gmail
               </a>
               <span className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-800 font-semibold text-2xs uppercase tracking-wider w-fit">
-                Awaiting Drive
+                Awaiting Gmail
               </span>
             </div>
           </div>

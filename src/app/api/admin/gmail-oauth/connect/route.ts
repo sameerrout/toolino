@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import {
-  getDriveEnvDiagnostics,
+  getGmailEnvDiagnostics,
   resolveServerEnv,
   probeGoogleClientCredentials,
-} from '@/lib/drive/googleDriveClient';
+  TARGET_GMAIL_ACCOUNT,
+} from '@/lib/gmail/gmailClient';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,30 +15,35 @@ export async function GET(request: NextRequest) {
   const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
   const protocol = isLocal ? 'http' : 'https';
 
-  // Always use canonical domain in production to prevent redirect URI mismatches
+  // Canonical host to avoid redirect URI mismatch in production
   const canonicalHost = isLocal ? host : 'www.toolforforever.com';
-  const redirectUri = `${protocol}://${canonicalHost}/api/admin/drive-oauth/callback`;
+  const redirectUri = `${protocol}://${canonicalHost}/api/admin/gmail-oauth/callback`;
 
-  const diagnostics = getDriveEnvDiagnostics();
+  const diagnostics = getGmailEnvDiagnostics();
   const clientIdMatch = resolveServerEnv([
-    'GOOGLE_DRIVE_CLIENT_ID',
+    'GMAIL_STORAGE_CLIENT_ID',
+    'GMAIL_CLIENT_ID',
     'GOOGLE_CLIENT_ID',
-    'GDRIVE_CLIENT_ID',
-    'NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID',
+    'GOOGLE_DRIVE_CLIENT_ID',
+    'NEXT_PUBLIC_GMAIL_STORAGE_CLIENT_ID',
     'NEXT_PUBLIC_GOOGLE_CLIENT_ID',
   ]);
   const clientSecretMatch = resolveServerEnv([
-    'GOOGLE_DRIVE_CLIENT_SECRET',
+    'GMAIL_STORAGE_CLIENT_SECRET',
+    'GMAIL_CLIENT_SECRET',
     'GOOGLE_CLIENT_SECRET',
-    'GDRIVE_CLIENT_SECRET',
+    'GOOGLE_DRIVE_CLIENT_SECRET',
   ]);
 
   const rawClientId = clientIdMatch?.value || '';
   const rawClientSecret = clientSecretMatch?.value || '';
 
-  // If Client ID is missing or validation fails, display comprehensive diagnostic panel
-  if (!rawClientId || diagnostics.clientIdFormat === 'looks_like_secret' || diagnostics.clientSecretFormat === 'looks_like_client_id') {
-    // Probe token endpoint if both are present even if invalid format
+  // If Client ID is missing or validation fails, display diagnostic panel
+  if (
+    !rawClientId ||
+    diagnostics.clientIdFormat === 'looks_like_secret' ||
+    diagnostics.clientSecretFormat === 'looks_like_client_id'
+  ) {
     let probeMessage = '';
     if (rawClientId && rawClientSecret) {
       const probe = await probeGoogleClientCredentials(rawClientId, rawClientSecret);
@@ -66,7 +72,7 @@ export async function GET(request: NextRequest) {
       <html lang="en">
         <head>
           <meta charset="utf-8" />
-          <title>Google Drive Setup Diagnostic — ToolForForever</title>
+          <title>Gmail Storage Setup Diagnostic — ToolForForever</title>
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 720px; margin: 30px auto; padding: 20px; color: #0f172a; line-height: 1.6; background: #f8fafc; }
@@ -90,9 +96,9 @@ export async function GET(request: NextRequest) {
         <body>
           <div class="card">
             <span class="badge-warn">Vercel Environment & Deployment Diagnostic</span>
-            <h2 style="margin: 0 0 8px; color: #0f172a;">Google Drive OAuth Credentials Check</h2>
+            <h2 style="margin: 0 0 8px; color: #0f172a;">Gmail API Storage Credentials Check</h2>
             <p style="color: #475569; margin-top: 0;">
-              Production persistence requires Google Drive API credentials for <strong>sameerrout2004@gmail.com</strong>.
+              Production persistence uses Gmail API messages in <strong>${TARGET_GMAIL_ACCOUNT}</strong>.
             </p>
 
             ${validationAlertsHtml}
@@ -107,27 +113,27 @@ export async function GET(request: NextRequest) {
               </thead>
               <tbody>
                 <tr>
-                  <td><code>GOOGLE_DRIVE_CLIENT_ID</code></td>
+                  <td><code>GMAIL_STORAGE_CLIENT_ID</code></td>
                   <td>${rawClientId ? '<span class="status-ok">DETECTED</span>' : '<span class="status-miss">NOT DETECTED</span>'}</td>
                   <td>${rawClientId ? `<span class="badge-info">${clientIdMatch?.key} (${rawClientId.length} chars)</span>` : '<span style="color: #64748b;">Missing in runtime</span>'}</td>
                 </tr>
                 <tr>
-                  <td><code>GOOGLE_DRIVE_CLIENT_SECRET</code></td>
+                  <td><code>GMAIL_STORAGE_CLIENT_SECRET</code></td>
                   <td>${rawClientSecret ? '<span class="status-ok">DETECTED</span>' : '<span class="status-miss">NOT DETECTED</span>'}</td>
                   <td>${rawClientSecret ? `<span class="badge-info">${clientSecretMatch?.key} (${rawClientSecret.length} chars)</span>` : '<span style="color: #64748b;">Missing in runtime</span>'}</td>
                 </tr>
                 <tr>
-                  <td><code>GOOGLE_DRIVE_REFRESH_TOKEN</code></td>
+                  <td><code>GMAIL_STORAGE_REFRESH_TOKEN</code></td>
                   <td>${diagnostics.hasRefreshToken ? '<span class="status-ok">DETECTED</span>' : '<span class="status-pending">AWAITING AUTHORIZATION</span>'}</td>
-                  <td>${diagnostics.hasRefreshToken ? '<span class="badge-info">Configured</span>' : '<span style="color: #64748b;">Generated via Step 2 below</span>'}</td>
+                  <td>${diagnostics.hasRefreshToken ? '<span class="badge-info">Configured</span>' : '<span style="color: #64748b;">Generated via OAuth Flow</span>'}</td>
                 </tr>
                 <tr>
                   <td><code>Target Account</code></td>
-                  <td colspan="2"><strong>sameerrout2004@gmail.com</strong></td>
+                  <td colspan="2"><strong>${TARGET_GMAIL_ACCOUNT}</strong></td>
                 </tr>
                 <tr>
-                  <td><code>Target Drive Folder</code></td>
-                  <td colspan="2"><strong>${diagnostics.folderName}</strong></td>
+                  <td><code>Dedicated Storage Labels</code></td>
+                  <td colspan="2"><code>ToolForForever/*</code> (Users, Visits, ToolUsage, Activity, Contact, Metadata, Backups)</td>
                 </tr>
                 <tr>
                   <td><code>Authorized Redirect URI</code></td>
@@ -150,8 +156,8 @@ export async function GET(request: NextRequest) {
                   <td><strong>${diagnostics.deployment.vercelEnv}</strong></td>
                 </tr>
                 <tr>
-                  <td style="color: #64748b;">Server Region:</td>
-                  <td><code>${diagnostics.deployment.vercelRegion}</code></td>
+                  <td style="color: #64748b;">Vercel Host:</td>
+                  <td><code>${diagnostics.deployment.vercelUrl}</code></td>
                 </tr>
                 <tr>
                   <td style="color: #64748b;">Server Execution Time:</td>
@@ -167,20 +173,18 @@ export async function GET(request: NextRequest) {
             </div>
 
             <div class="notice-box">
-              <strong>Root Cause if you already added the variables in Vercel:</strong><br />
-              In Vercel, adding or editing environment variables in Project Settings creates a new configuration state, but <em>does not</em> automatically update running serverless deployments.
-              <br /><br />
-              Existing deployments retain the immutable environment snapshot from when they were built. A new deployment (via <code>git push</code> or clicking <strong>Redeploy</strong> in Vercel) is required to bake the variables into the serverless runtime.
+              <strong>Vercel Project Configuration:</strong><br />
+              Ensure environment variables are configured in the <strong>toolforforever</strong> project in Vercel with the <strong>Production</strong> checkbox enabled.
             </div>
 
             <div class="step">
-              <strong>How to resolve:</strong>
+              <strong>How to connect Gmail Storage:</strong>
               <ol style="margin: 8px 0; padding-left: 20px;">
-                <li>Open <strong>Vercel &rarr; Project Settings &rarr; Environment Variables</strong>.</li>
-                <li>Verify that <code>GOOGLE_DRIVE_CLIENT_ID</code> and <code>GOOGLE_DRIVE_CLIENT_SECRET</code> have the <strong>Production</strong> checkbox enabled.</li>
-                <li>Go to the <strong>Deployments</strong> tab in Vercel.</li>
-                <li>Click the three dots (<code>...</code>) on the latest deployment &rarr; click <strong>Redeploy</strong> (uncheck "Use existing Build Cache" if prompted).</li>
-                <li>Once the redeploy finishes, refresh this page to begin Google OAuth.</li>
+                <li>In Google Cloud Console, ensure Authorized Redirect URI includes:
+                  <br /><code>${redirectUri}</code>
+                </li>
+                <li>Add <code>GMAIL_STORAGE_CLIENT_ID</code> and <code>GMAIL_STORAGE_CLIENT_SECRET</code> to Vercel (Project: <strong>toolforforever</strong>, scope: <strong>Production</strong>).</li>
+                <li>Redeploy on Vercel, then refresh this page to begin authorization with <strong>${TARGET_GMAIL_ACCOUNT}</strong>.</li>
               </ol>
             </div>
 
@@ -204,23 +208,24 @@ export async function GET(request: NextRequest) {
   // Generate cryptographically secure OAuth CSRF state
   const state = crypto.randomBytes(32).toString('hex');
 
-  // Google OAuth Authorization URL requesting offline access to retrieve a permanent Refresh Token
+  // Google OAuth Authorization URL requesting offline access to retrieve permanent Refresh Token
+  // Scope: https://www.googleapis.com/auth/gmail.modify allows creating labels and structured record messages without inbox clutter
   const params = new URLSearchParams({
     client_id: rawClientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
+    scope: 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email',
     access_type: 'offline',
     prompt: 'consent',
     include_granted_scopes: 'true',
+    login_hint: TARGET_GMAIL_ACCOUNT,
     state,
   });
 
   const redirectUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   const response = NextResponse.redirect(redirectUrl);
 
-  // Store state in an httpOnly, secure, SameSite=Lax cookie for 10 minutes
-  response.cookies.set('tff_oauth_state', state, {
+  response.cookies.set('tff_gmail_oauth_state', state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
