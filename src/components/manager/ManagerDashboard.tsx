@@ -487,12 +487,12 @@ export function ManagerDashboard() {
             {data.isDatabaseConnected ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 border border-emerald-200">
                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                Google Drive Connected
+                Gmail Storage Active
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 border border-amber-200">
                 <AlertTriangle className="w-3 h-3 text-amber-600" />
-                Awaiting Google Drive
+                Awaiting Gmail
               </span>
             )}
           </p>
@@ -648,11 +648,11 @@ export function ManagerDashboard() {
                   </span>
                   {data.isDatabaseConnected ? (
                     <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      Google Drive
+                      Gmail Storage
                     </span>
                   ) : (
                     <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting Drive
+                      Awaiting Gmail
                     </span>
                   )}
                 </div>
@@ -675,11 +675,11 @@ export function ManagerDashboard() {
                   </span>
                   {data.isDatabaseConnected ? (
                     <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      Google Drive
+                      Gmail Storage
                     </span>
                   ) : (
                     <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting Drive
+                      Awaiting Gmail
                     </span>
                   )}
                 </div>
@@ -702,11 +702,11 @@ export function ManagerDashboard() {
                   </span>
                   {data.isDatabaseConnected ? (
                     <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      Google Drive
+                      Gmail Storage
                     </span>
                   ) : (
                     <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting Drive
+                      Awaiting Gmail
                     </span>
                   )}
                 </div>
@@ -729,11 +729,11 @@ export function ManagerDashboard() {
                   </span>
                   {data.isDatabaseConnected ? (
                     <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      Google Drive
+                      Gmail Storage
                     </span>
                   ) : (
                     <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting Drive
+                      Awaiting Gmail
                     </span>
                   )}
                 </div>
