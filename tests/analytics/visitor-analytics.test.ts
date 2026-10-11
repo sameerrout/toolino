@@ -25,6 +25,7 @@ import {
   getVisitsFilePath,
 } from '@/lib/analytics/visitsStore';
 import { POST as visitPostHandler } from '@/app/api/analytics/visit/route';
+import { POST as trackPostHandler } from '@/app/api/track/route';
 import { GET as managerStatsHandler } from '@/app/api/manager/stats/route';
 import { NextRequest } from 'next/server';
 import { createSessionToken } from '@/lib/auth';
@@ -458,5 +459,34 @@ describe('Website Visitor Tracking & Server Analytics Suite', () => {
       expect(isTodayInReportingTimezone(stored[0].timestamp, REPORTING_TIMEZONE, istMorningRef)).toBe(true);
       expect(isTodayInReportingTimezone(stored[1].timestamp, REPORTING_TIMEZONE, istMorningRef)).toBe(false);
     });
+
+    it('successfully processes track requests from /api/track with visitorId, page, and referrer', async () => {
+      const request = new NextRequest('http://localhost:3000/api/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
+          'x-forwarded-for': '203.0.113.195',
+        },
+        body: JSON.stringify({
+          visitorId: 'vid_custom_track_123',
+          page: '/tools/image-resizer',
+          referrer: 'https://google.com',
+        }),
+      });
+
+      const response = await trackPostHandler(request);
+      expect(response.status).toBe(200);
+      const json = await response.json();
+      expect(json.ok).toBe(true);
+
+      const visits = loadPersistedVisits();
+      expect(visits.length).toBeGreaterThan(0);
+      const tracked = visits.find((v) => v.path === '/tools/image-resizer');
+      expect(tracked).toBeDefined();
+      expect(tracked?.visitorSessionId).toBe('vid_custom_track_123');
+      expect(tracked?.referrer).toBe('https://google.com');
+    });
   });
 });
+
