@@ -3,67 +3,36 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { isManagerEmail } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
 import {
   loadPersistedVisits,
   persistNewVisitSync,
   isRecentDuplicateVisit,
   calculateVisitorAnalytics,
 } from '@/lib/analytics/visitsStore';
-import { REPORTING_TIMEZONE, getReportingDayBounds } from '@/lib/analytics/visitor';
+import { REPORTING_TIMEZONE } from '@/lib/analytics/visitor';
+import {
+  loadDriveDatabase,
+  saveDriveDatabase,
+  mutateDriveDatabase,
+  isGoogleDriveConfigured,
+  DEFAULT_FOLDER_NAME,
+  TARGET_GOOGLE_ACCOUNT,
+  type DatabaseSchema,
+  type UserRecord,
+  type ActivityEvent,
+  type ContactMessage,
+  type ContactMessageStatus,
+  type PageVisitRecord,
+} from '@/lib/drive/driveStore';
 
-export interface UserRecord {
-  id: string;
-  email: string;
-  name: string;
-  picture?: string;
-  authProvider: 'google' | 'email';
-  passwordHash?: string;
-  role: 'user' | 'manager';
-  createdAt: string;
-  lastLoginAt: string;
-  resetTokenHash?: string;
-  resetTokenExpires?: string;
-}
-
-export interface ActivityEvent {
-  timestamp: string;
-  type: 'signup' | 'login' | 'tool_use' | 'member_delete';
-  email?: string;
-  toolSlug?: string;
-}
-
-export type ContactMessageStatus = 'unread' | 'read' | 'replied' | 'resolved';
-
-export interface ContactMessage {
-  id: string;
-  name: string;
-  email: string;
-  category: string;
-  message: string;
-  status: ContactMessageStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PageVisitRecord {
-  id: string;
-  timestamp: string;
-  visitorHash: string;
-  maskedIp: string;
-  path: string;
-  referrer?: string;
-  userAgent?: string;
-  visitorSessionId?: string;
-}
-
-export interface DatabaseSchema {
-  users: UserRecord[];
-  toolUsage: Record<string, number>;
-  events: ActivityEvent[];
-  contactMessages: ContactMessage[];
-  visits: PageVisitRecord[];
-}
+export type {
+  DatabaseSchema,
+  UserRecord,
+  ActivityEvent,
+  ContactMessage,
+  ContactMessageStatus,
+  PageVisitRecord,
+};
 
 const INITIAL_DB: DatabaseSchema = {
   users: [],
@@ -73,71 +42,12 @@ const INITIAL_DB: DatabaseSchema = {
   visits: [],
 };
 
-// Global in-memory cache on globalThis for fast lookup and serverless resilience across hot-reloads
+// In-memory fallback and test cache
 const globalForDb = globalThis as unknown as {
   __toolino_memory_db__?: DatabaseSchema;
-  prisma?: PrismaClient;
 };
 
-export function resolvePrismaDatabaseUrl(): string | undefined {
-  const candidates = [
-    process.env.DATABASE_URL,
-    process.env.POSTGRES_PRISMA_URL,
-    process.env.DATABASE_URL_UNPOOLED,
-    process.env.POSTGRES_URL_NON_POOLING,
-    process.env.POSTGRES_URL,
-  ];
-
-  for (const candidate of candidates) {
-    if (candidate && typeof candidate === 'string') {
-      const trimmed = candidate.trim();
-      if (
-        (trimmed.startsWith('postgresql:') || trimmed.startsWith('postgres:')) &&
-        !trimmed.includes('localhost')
-      ) {
-        try {
-          const parsed = new URL(trimmed);
-          if (parsed.hostname.includes('-pooler') || parsed.hostname.includes('pooler')) {
-            if (!parsed.searchParams.has('pgbouncer')) {
-              parsed.searchParams.set('pgbouncer', 'true');
-            }
-          }
-          if (!parsed.searchParams.has('sslmode')) {
-            parsed.searchParams.set('sslmode', 'require');
-          }
-          if (!parsed.searchParams.has('connect_timeout')) {
-            parsed.searchParams.set('connect_timeout', '15');
-          }
-          return parsed.toString();
-        } catch {
-          return trimmed;
-        }
-      }
-    }
-  }
-
-  const local = process.env.DATABASE_URL;
-  if (local && (local.startsWith('postgresql:') || local.startsWith('postgres:'))) {
-    return local;
-  }
-  return undefined;
-}
-
-function getPrismaClient(): PrismaClient {
-  const resolvedUrl = resolvePrismaDatabaseUrl();
-  return new PrismaClient({
-    datasources: resolvedUrl ? { db: { url: resolvedUrl } } : undefined,
-    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-  });
-}
-
-// Global Prisma instance for connection reuse across hot-reloads
-export const prisma = globalForDb.prisma || getPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForDb.prisma = prisma;
-
 function getDbFilePath(): string {
-  // Use /tmp on Vercel or AWS Lambda where the project root is read-only
   if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     const tmpDir = path.join(os.tmpdir(), '.toolino_data');
     return path.join(tmpDir, 'db.json');
@@ -156,13 +66,13 @@ function ensureDbFile(): string {
       fs.writeFileSync(filePath, JSON.stringify(INITIAL_DB, null, 2), 'utf-8');
     }
   } catch {
-    // If filesystem write fails, in-memory memoryDb is used
+    // Memory fallback
   }
   return filePath;
 }
 
 /**
- * Returns database state, ensuring backwards compatibility and dev resilience.
+ * Synchronous local database read for test suites and dev fallbacks.
  */
 export function getDb(): DatabaseSchema {
   try {
@@ -176,7 +86,6 @@ export function getDb(): DatabaseSchema {
           if (!parsed.toolUsage || typeof parsed.toolUsage !== 'object') parsed.toolUsage = {};
           if (!Array.isArray(parsed.events)) parsed.events = [];
           if (!Array.isArray(parsed.contactMessages)) parsed.contactMessages = [];
-          // Always use authoritative persisted visits
           parsed.visits = loadPersistedVisits();
           globalForDb.__toolino_memory_db__ = parsed;
           return parsed;
@@ -184,7 +93,7 @@ export function getDb(): DatabaseSchema {
       }
     }
   } catch (error) {
-    console.error('Failed to read database store:', error);
+    console.error('Failed to read local store:', error);
   }
 
   if (!globalForDb.__toolino_memory_db__) {
@@ -202,36 +111,36 @@ export function getDb(): DatabaseSchema {
 }
 
 export function saveDb(data: DatabaseSchema): void {
-  // Ensure visits array in saveDb is authoritative and never overwritten by stale state
   data.visits = loadPersistedVisits();
   globalForDb.__toolino_memory_db__ = data;
 
-  const maxRetries = 5;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const filePath = ensureDbFile();
-      const tempFile = `${filePath}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
-      fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
-      try {
-        fs.renameSync(tempFile, filePath);
-      } catch {
-        // Fallback for Windows file locking / OneDrive sync
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-        if (fs.existsSync(tempFile)) {
-          try {
-            fs.unlinkSync(tempFile);
-          } catch {
-            // ignore cleanup error
-          }
-        }
-      }
-      return;
-    } catch (error) {
-      if (attempt === maxRetries) {
-        console.error('Failed to save database store after retries:', error);
-      }
-    }
+  try {
+    const filePath = ensureDbFile();
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch {
+    // Ignore in-memory fallback
   }
+}
+
+/**
+ * Primary asynchronous database loader: loads strictly from Google Drive if configured.
+ */
+export async function getDbAsync(): Promise<DatabaseSchema> {
+  if (isGoogleDriveConfigured()) {
+    return loadDriveDatabase();
+  }
+  return getDb();
+}
+
+/**
+ * Primary asynchronous database saver: writes strictly to Google Drive if configured.
+ */
+export async function saveDbAsync(data: DatabaseSchema): Promise<void> {
+  if (isGoogleDriveConfigured()) {
+    await saveDriveDatabase(data);
+    return;
+  }
+  saveDb(data);
 }
 
 // ============================================================
@@ -261,6 +170,12 @@ export function hashToken(token: string): string {
 
 export function findUserByEmail(email: string): UserRecord | undefined {
   const db = getDb();
+  const normalized = email.trim().toLowerCase();
+  return db.users.find((u) => u.email.toLowerCase() === normalized);
+}
+
+export async function findUserByEmailAsync(email: string): Promise<UserRecord | undefined> {
+  const db = await getDbAsync();
   const normalized = email.trim().toLowerCase();
   return db.users.find((u) => u.email.toLowerCase() === normalized);
 }
@@ -320,29 +235,66 @@ export function registerEmailUser(
   if (db.events.length > 200) db.events = db.events.slice(0, 200);
   saveDb(db);
 
-  if (prisma?.user?.upsert && process.env.DATABASE_URL) {
-    prisma.user.upsert({
-      where: { email: newUser.email },
-      update: {
-        name: newUser.name,
-        passwordHash: newUser.passwordHash || null,
-        role: newUser.role,
-        lastLoginAt: new Date(newUser.lastLoginAt),
-      },
-      create: {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        authProvider: 'email',
-        passwordHash: newUser.passwordHash || null,
-        role: newUser.role,
-        createdAt: new Date(newUser.createdAt),
-        lastLoginAt: new Date(newUser.lastLoginAt),
-      },
-    }).catch(() => {});
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch((err) => console.error('Failed to sync registered user to Google Drive:', err));
   }
 
   return { user: newUser };
+}
+
+export async function registerEmailUserAsync(
+  email: string,
+  password: string,
+  name?: string
+): Promise<{ user?: UserRecord; error?: string }> {
+  if (isGoogleDriveConfigured()) {
+    return mutateDriveDatabase(async (db) => {
+      const normalizedEmail = email.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        return { error: 'Please enter a valid email address.' };
+      }
+      if (!password || password.length < 6) {
+        return { error: 'Password must be at least 6 characters long.' };
+      }
+
+      const existing = db.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+      if (existing) {
+        if (isManagerEmail(normalizedEmail)) {
+          existing.passwordHash = hashPassword(password);
+          existing.role = 'manager';
+          if (name) existing.name = name;
+          existing.lastLoginAt = new Date().toISOString();
+          return { user: existing };
+        }
+        return { error: 'An account with this email already exists.' };
+      }
+
+      const now = new Date().toISOString();
+      const isManager = isManagerEmail(normalizedEmail);
+      const newUser: UserRecord = {
+        id: isManager ? `mgr_${Date.now()}` : `usr_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+        email: normalizedEmail,
+        name: name || normalizedEmail.split('@')[0],
+        authProvider: 'email',
+        passwordHash: hashPassword(password),
+        role: isManager ? 'manager' : 'user',
+        createdAt: now,
+        lastLoginAt: now,
+      };
+
+      db.users.push(newUser);
+      db.events.unshift({
+        timestamp: now,
+        type: 'signup',
+        email: newUser.email,
+      });
+      if (db.events.length > 200) db.events = db.events.slice(0, 200);
+      return { user: newUser };
+    });
+  }
+
+  return registerEmailUser(email, password, name);
 }
 
 // ============================================================
@@ -358,7 +310,6 @@ export function authenticateEmailUser(
   const now = new Date().toISOString();
   const isManager = isManagerEmail(normalizedEmail);
 
-  // If user does not exist in DB:
   if (!user) {
     const envManagerPassword = process.env.MANAGER_PASSWORD;
     if (isManager && envManagerPassword && password === envManagerPassword) {
@@ -374,34 +325,14 @@ export function authenticateEmailUser(
       };
       db.users.push(activeUser);
       saveDb(db);
-
-      if (prisma?.user?.upsert && process.env.DATABASE_URL) {
-        prisma.user.upsert({
-          where: { email: activeUser.email },
-          update: {
-            passwordHash: activeUser.passwordHash,
-            role: 'manager',
-            lastLoginAt: new Date(),
-          },
-          create: {
-            id: activeUser.id,
-            email: activeUser.email,
-            name: activeUser.name,
-            authProvider: 'email',
-            passwordHash: activeUser.passwordHash,
-            role: 'manager',
-            createdAt: new Date(activeUser.createdAt),
-            lastLoginAt: new Date(activeUser.lastLoginAt),
-          },
-        }).catch(() => {});
+      if (isGoogleDriveConfigured()) {
+        saveDbAsync(db).catch(() => {});
       }
-
       return { user: activeUser };
     }
     return { error: 'Invalid email or password.' };
   }
 
-  // Match stored password hash in database
   const passwordMatches = user.passwordHash ? verifyPassword(password, user.passwordHash) : false;
   const isEnvManagerValid = isManager && process.env.MANAGER_PASSWORD && password === process.env.MANAGER_PASSWORD;
 
@@ -409,7 +340,6 @@ export function authenticateEmailUser(
     return { error: 'Invalid email or password.' };
   }
 
-  // Ensure role is manager if on manager email list
   if (isManager) {
     user.role = 'manager';
   }
@@ -422,6 +352,9 @@ export function authenticateEmailUser(
   });
   if (db.events.length > 200) db.events = db.events.slice(0, 200);
   saveDb(db);
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch(() => {});
+  }
 
   return { user };
 }
@@ -457,6 +390,9 @@ export function recordUserLogin(user: {
     });
     if (db.events.length > 200) db.events = db.events.slice(0, 200);
     saveDb(db);
+    if (isGoogleDriveConfigured()) {
+      saveDbAsync(db).catch(() => {});
+    }
     return { user: existing, isNewUser: false };
   }
 
@@ -479,6 +415,9 @@ export function recordUserLogin(user: {
   });
   if (db.events.length > 200) db.events = db.events.slice(0, 200);
   saveDb(db);
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch(() => {});
+  }
 
   return { user: newUser, isNewUser: true };
 }
@@ -500,23 +439,28 @@ export function recordToolUsage(toolSlug: string, email?: string): void {
   }
   saveDb(db);
 
-  if (prisma?.toolUsage?.upsert && process.env.DATABASE_URL) {
-    prisma.toolUsage.upsert({
-      where: { slug: toolSlug },
-      update: { count: { increment: 1 } },
-      create: { slug: toolSlug, count: 1 },
-    }).catch(() => {});
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch(() => {});
   }
-  if (prisma?.activityEvent?.create && process.env.DATABASE_URL) {
-    prisma.activityEvent.create({
-      data: {
+}
+
+export async function recordToolUsageAsync(toolSlug: string, email?: string): Promise<void> {
+  if (isGoogleDriveConfigured()) {
+    await mutateDriveDatabase((db) => {
+      db.toolUsage[toolSlug] = (db.toolUsage[toolSlug] || 0) + 1;
+      db.events.unshift({
+        timestamp: new Date().toISOString(),
         type: 'tool_use',
         toolSlug,
-        email: email ? email.toLowerCase() : null,
-        timestamp: new Date(),
-      },
-    }).catch(() => {});
+        email,
+      });
+      if (db.events.length > 200) {
+        db.events = db.events.slice(0, 200);
+      }
+    });
+    return;
   }
+  recordToolUsage(toolSlug, email);
 }
 
 // ============================================================
@@ -530,8 +474,6 @@ export function deleteUserById(id: string): { success: boolean; user?: UserRecor
   }
 
   const target = db.users[index];
-
-  // Prevent deleting manager/admin accounts
   if (isManagerEmail(target.email) || target.role === 'manager') {
     return { success: false, error: 'Cannot delete an authorized manager account.' };
   }
@@ -544,17 +486,41 @@ export function deleteUserById(id: string): { success: boolean; user?: UserRecor
     type: 'member_delete',
     email: deletedUser.email,
   });
-
   if (db.events.length > 200) {
     db.events = db.events.slice(0, 200);
   }
 
   saveDb(db);
-
-  if (prisma?.user?.delete && process.env.DATABASE_URL) {
-    prisma.user.delete({ where: { id } }).catch(() => {});
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch(() => {});
   }
   return { success: true, user: deletedUser };
+}
+
+export async function deleteUserByIdAsync(id: string): Promise<{ success: boolean; user?: UserRecord; error?: string }> {
+  if (isGoogleDriveConfigured()) {
+    return mutateDriveDatabase((db) => {
+      const index = db.users.findIndex((u) => u.id === id);
+      if (index === -1) {
+        return { success: false, error: 'Member not found.' };
+      }
+      const target = db.users[index];
+      if (isManagerEmail(target.email) || target.role === 'manager') {
+        return { success: false, error: 'Cannot delete an authorized manager account.' };
+      }
+      const [deletedUser] = db.users.splice(index, 1);
+      db.events.unshift({
+        timestamp: new Date().toISOString(),
+        type: 'member_delete',
+        email: deletedUser.email,
+      });
+      if (db.events.length > 200) {
+        db.events = db.events.slice(0, 200);
+      }
+      return { success: true, user: deletedUser };
+    });
+  }
+  return deleteUserById(id);
 }
 
 export function deleteUserByEmail(email: string): { success: boolean; user?: UserRecord; error?: string } {
@@ -567,24 +533,8 @@ export function deleteUserByEmail(email: string): { success: boolean; user?: Use
   return deleteUserById(user.id);
 }
 
-export async function deleteUserByIdAsync(id: string): Promise<{ success: boolean; user?: UserRecord; error?: string }> {
-  const localResult = deleteUserById(id);
-  if (!localResult.success) return localResult;
-
-  if (prisma && process.env.DATABASE_URL) {
-    try {
-      await prisma.user.delete({ where: { id } });
-    } catch (err) {
-      console.warn('Prisma deleteUser failed:', err instanceof Error ? err.message : err);
-    }
-  }
-  return localResult;
-}
-
 export async function deleteUserByEmailAsync(email: string): Promise<{ success: boolean; user?: UserRecord; error?: string }> {
-  const normalized = email.trim().toLowerCase();
-  const db = getDb();
-  const user = db.users.find((u) => u.email.toLowerCase() === normalized);
+  const user = await findUserByEmailAsync(email);
   if (!user) {
     return { success: false, error: 'Member not found.' };
   }
@@ -592,7 +542,7 @@ export async function deleteUserByEmailAsync(email: string): Promise<{ success: 
 }
 
 // ============================================================
-// Password Reset Functionality (Hashed Token Storage)
+// Password Reset Functionality
 // ============================================================
 export function createPasswordResetToken(email: string): { success: boolean; token?: string; error?: string } {
   const normalizedEmail = email.trim().toLowerCase();
@@ -603,17 +553,18 @@ export function createPasswordResetToken(email: string): { success: boolean; tok
     return { success: false, error: 'No account found with this email address.' };
   }
 
-  // Generate cryptographically secure random token
   const rawToken = crypto.randomBytes(32).toString('hex');
   const tokenHashed = hashToken(rawToken);
-  const expires = new Date(Date.now() + 3600 * 1000).toISOString(); // 1 hour validity
+  const expires = new Date(Date.now() + 3600 * 1000).toISOString();
 
-  // Store ONLY hashed token in the database
   user.resetTokenHash = tokenHashed;
   user.resetTokenExpires = expires;
   saveDb(db);
 
-  // Return raw token exclusively to the email service
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch(() => {});
+  }
+
   return { success: true, token: rawToken };
 }
 
@@ -621,8 +572,6 @@ export function verifyResetToken(token: string): { valid: boolean; email?: strin
   if (!token) return { valid: false, error: 'Reset token is required.' };
   const db = getDb();
   const tokenHashed = hashToken(token);
-  
-  // Find by hashed token
   const user = db.users.find((u) => u.resetTokenHash === tokenHashed);
 
   if (!user || !user.resetTokenExpires) {
@@ -643,7 +592,6 @@ export function resetPasswordWithToken(
   if (!token) {
     return { success: false, error: 'Reset token is required.' };
   }
-
   if (!newPassword || newPassword.length < 6) {
     return { success: false, error: 'Password must be at least 6 characters long.' };
   }
@@ -665,13 +613,16 @@ export function resetPasswordWithToken(
   user.resetTokenExpires = undefined;
   saveDb(db);
 
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch(() => {});
+  }
+
   return { success: true };
 }
 
 // ============================================================
 // Contact Messages (Public Submission & Manager Review)
 // ============================================================
-
 export function createContactMessage(data: {
   name: string;
   email: string;
@@ -697,26 +648,42 @@ export function createContactMessage(data: {
     db.contactMessages = [];
   }
 
-  // Prepend newest message first
   db.contactMessages.unshift(newMsg);
   saveDb(db);
 
-  if (prisma?.contactMessage?.create && process.env.DATABASE_URL) {
-    prisma.contactMessage.create({
-      data: {
-        id: newMsg.id,
-        name: newMsg.name,
-        email: newMsg.email,
-        category: newMsg.category,
-        message: newMsg.message,
-        status: newMsg.status,
-        createdAt: new Date(newMsg.createdAt),
-        updatedAt: new Date(newMsg.updatedAt),
-      },
-    }).catch(() => {});
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch(() => {});
   }
 
   return newMsg;
+}
+
+export async function createContactMessageAsync(data: {
+  name: string;
+  email: string;
+  category: string;
+  message: string;
+}): Promise<ContactMessage> {
+  if (isGoogleDriveConfigured()) {
+    return mutateDriveDatabase((db) => {
+      const now = new Date().toISOString();
+      const id = `msg_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      const newMsg: ContactMessage = {
+        id,
+        name: data.name.trim(),
+        email: data.email.trim().toLowerCase(),
+        category: data.category.trim(),
+        message: data.message.trim(),
+        status: 'unread',
+        createdAt: now,
+        updatedAt: now,
+      };
+      if (!Array.isArray(db.contactMessages)) db.contactMessages = [];
+      db.contactMessages.unshift(newMsg);
+      return newMsg;
+    });
+  }
+  return createContactMessage(data);
 }
 
 export function getContactMessages(): ContactMessage[] {
@@ -724,7 +691,6 @@ export function getContactMessages(): ContactMessage[] {
   if (!Array.isArray(db.contactMessages)) {
     return [];
   }
-  // Return sorted newest first
   return [...db.contactMessages].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
@@ -758,11 +724,8 @@ export function updateContactMessageStatus(
   target.updatedAt = new Date().toISOString();
   saveDb(db);
 
-  if (prisma?.contactMessage?.update && process.env.DATABASE_URL) {
-    prisma.contactMessage.update({
-      where: { id },
-      data: { status, updatedAt: new Date() },
-    }).catch(() => {});
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch(() => {});
   }
 
   return { success: true, message: target };
@@ -782,78 +745,60 @@ export function deleteContactMessage(id: string): { success: boolean; error?: st
   db.contactMessages.splice(index, 1);
   saveDb(db);
 
-  if (prisma?.contactMessage?.delete && process.env.DATABASE_URL) {
-    prisma.contactMessage.delete({ where: { id } }).catch(() => {});
+  if (isGoogleDriveConfigured()) {
+    saveDbAsync(db).catch(() => {});
   }
 
   return { success: true };
 }
 
 export async function getContactMessagesAsync(): Promise<ContactMessage[]> {
-  if (prisma && process.env.DATABASE_URL) {
-    try {
-      const dbMessages = await prisma.contactMessage.findMany({
-        orderBy: { createdAt: 'desc' },
-      });
-      return dbMessages.map((m) => ({
-        id: m.id,
-        name: m.name,
-        email: m.email,
-        category: m.category,
-        message: m.message,
-        status: m.status as ContactMessageStatus,
-        createdAt: m.createdAt.toISOString(),
-        updatedAt: m.updatedAt.toISOString(),
-      }));
-    } catch (err) {
-      console.warn('Prisma getContactMessages failed; using local store:', err instanceof Error ? err.message : err);
-    }
+  const db = await getDbAsync();
+  if (!Array.isArray(db.contactMessages)) {
+    return [];
   }
-  return getContactMessages();
+  return [...db.contactMessages].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 }
 
 export async function updateContactMessageStatusAsync(
   id: string,
   status: ContactMessageStatus
 ): Promise<{ success: boolean; message?: ContactMessage; error?: string }> {
-  const localResult = updateContactMessageStatus(id, status);
-  if (prisma && process.env.DATABASE_URL) {
-    try {
-      const updated = await prisma.contactMessage.update({
-        where: { id },
-        data: { status, updatedAt: new Date() },
-      });
-      return {
-        success: true,
-        message: {
-          id: updated.id,
-          name: updated.name,
-          email: updated.email,
-          category: updated.category,
-          message: updated.message,
-          status: updated.status as ContactMessageStatus,
-          createdAt: updated.createdAt.toISOString(),
-          updatedAt: updated.updatedAt.toISOString(),
-        },
-      };
-    } catch (err) {
-      console.warn('Prisma updateContactMessageStatus failed:', err instanceof Error ? err.message : err);
-    }
+  if (isGoogleDriveConfigured()) {
+    return mutateDriveDatabase((db) => {
+      const validStatuses: ContactMessageStatus[] = ['unread', 'read', 'replied', 'resolved'];
+      if (!validStatuses.includes(status)) {
+        return { success: false, error: 'Invalid status value.' };
+      }
+      const target = db.contactMessages?.find((m) => m.id === id);
+      if (!target) {
+        return { success: false, error: 'Message not found.' };
+      }
+      target.status = status;
+      target.updatedAt = new Date().toISOString();
+      return { success: true, message: target };
+    });
   }
-  return localResult;
+  return updateContactMessageStatus(id, status);
 }
 
 export async function deleteContactMessageAsync(id: string): Promise<{ success: boolean; error?: string }> {
-  const localResult = deleteContactMessage(id);
-  if (prisma && process.env.DATABASE_URL) {
-    try {
-      await prisma.contactMessage.delete({ where: { id } });
+  if (isGoogleDriveConfigured()) {
+    return mutateDriveDatabase((db) => {
+      if (!Array.isArray(db.contactMessages)) {
+        return { success: false, error: 'Message not found.' };
+      }
+      const index = db.contactMessages.findIndex((m) => m.id === id);
+      if (index === -1) {
+        return { success: false, error: 'Message not found.' };
+      }
+      db.contactMessages.splice(index, 1);
       return { success: true };
-    } catch (err) {
-      console.warn('Prisma deleteContactMessage failed:', err instanceof Error ? err.message : err);
-    }
+    });
   }
-  return localResult;
+  return deleteContactMessage(id);
 }
 
 // ============================================================
@@ -869,129 +814,32 @@ export function recordPageVisit(data: {
   visitorSessionId?: string;
 }): { success: boolean; visit?: PageVisitRecord; debounced?: boolean } {
   const visitorKey = data.visitorSessionId || data.visitorHash;
-  const normalizedPath = data.path.trim().toLowerCase();
+  const normalizedPath = data.path.trim();
 
-  // Deduplication / Debounce:
-  // If the same visitor key visited the exact same path within the last 5 seconds,
-  // ignore as duplicate (covers React 19 Strict Mode effect double-invocation & rapid refresh)
   if (isRecentDuplicateVisit(visitorKey, normalizedPath, 5000)) {
-    const existing = loadPersistedVisits().find(
-      (v) =>
-        (v.visitorSessionId || v.visitorHash) === visitorKey &&
-        v.path.trim().toLowerCase() === normalizedPath
-    );
+    const existing = loadPersistedVisits().find((v) => {
+      const key = v.visitorSessionId || v.visitorHash;
+      return key === visitorKey && v.path.trim() === normalizedPath;
+    });
     return { success: true, visit: existing, debounced: true };
   }
 
   const id = `vis_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const now = new Date().toISOString();
+
   const newVisit: PageVisitRecord = {
     id,
-    timestamp: new Date().toISOString(),
+    timestamp: now,
     visitorHash: data.visitorHash,
     maskedIp: data.maskedIp,
-    path: data.path.trim(),
+    path: normalizedPath,
     referrer: data.referrer ? data.referrer.trim() : undefined,
     userAgent: data.userAgent ? data.userAgent.slice(0, 150) : undefined,
-    visitorSessionId: data.visitorSessionId,
+    visitorSessionId: data.visitorSessionId || undefined,
   };
 
   persistNewVisitSync(newVisit);
-
-  return { success: true, visit: newVisit };
-}
-
-let schemaEnsured = false;
-
-export async function ensureDatabaseSchemaAsync(client: PrismaClient = prisma): Promise<boolean> {
-  if (schemaEnsured) return true;
-  try {
-    await client.$queryRawUnsafe('SELECT 1 FROM "page_visits" LIMIT 1;');
-    schemaEnsured = true;
-    return true;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('does not exist') || msg.includes('P2021') || msg.includes('42P01')) {
-      console.warn('PostgreSQL tables missing. Auto-creating schema...');
-      const statements = [
-        `CREATE TABLE IF NOT EXISTS "users" (
-          "id" TEXT NOT NULL,
-          "email" TEXT NOT NULL,
-          "name" TEXT NOT NULL,
-          "picture" TEXT,
-          "authProvider" TEXT NOT NULL DEFAULT 'email',
-          "passwordHash" TEXT,
-          "role" TEXT NOT NULL DEFAULT 'user',
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "lastLoginAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "resetTokenHash" TEXT,
-          "resetTokenExpires" TIMESTAMP(3),
-          CONSTRAINT "users_pkey" PRIMARY KEY ("id")
-        );`,
-        `CREATE TABLE IF NOT EXISTS "tool_usages" (
-          "id" TEXT NOT NULL,
-          "slug" TEXT NOT NULL,
-          "count" INTEGER NOT NULL DEFAULT 0,
-          "updatedAt" TIMESTAMP(3) NOT NULL,
-          CONSTRAINT "tool_usages_pkey" PRIMARY KEY ("id")
-        );`,
-        `CREATE TABLE IF NOT EXISTS "activity_events" (
-          "id" TEXT NOT NULL,
-          "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "type" TEXT NOT NULL,
-          "email" TEXT,
-          "toolSlug" TEXT,
-          CONSTRAINT "activity_events_pkey" PRIMARY KEY ("id")
-        );`,
-        `CREATE TABLE IF NOT EXISTS "contact_messages" (
-          "id" TEXT NOT NULL,
-          "name" TEXT NOT NULL,
-          "email" TEXT NOT NULL,
-          "category" TEXT NOT NULL,
-          "message" TEXT NOT NULL,
-          "status" TEXT NOT NULL DEFAULT 'unread',
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL,
-          CONSTRAINT "contact_messages_pkey" PRIMARY KEY ("id")
-        );`,
-        `CREATE TABLE IF NOT EXISTS "page_visits" (
-          "id" TEXT NOT NULL,
-          "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "visitorHash" TEXT NOT NULL,
-          "maskedIp" TEXT NOT NULL,
-          "path" TEXT NOT NULL,
-          "referrer" TEXT,
-          "userAgent" TEXT,
-          "visitorSessionId" TEXT,
-          CONSTRAINT "page_visits_pkey" PRIMARY KEY ("id")
-        );`,
-        `CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email");`,
-        `CREATE UNIQUE INDEX IF NOT EXISTS "tool_usages_slug_key" ON "tool_usages"("slug");`,
-        `CREATE INDEX IF NOT EXISTS "activity_events_timestamp_idx" ON "activity_events"("timestamp");`,
-        `CREATE INDEX IF NOT EXISTS "activity_events_email_idx" ON "activity_events"("email");`,
-        `CREATE INDEX IF NOT EXISTS "contact_messages_status_idx" ON "contact_messages"("status");`,
-        `CREATE INDEX IF NOT EXISTS "contact_messages_createdAt_idx" ON "contact_messages"("createdAt");`,
-        `CREATE INDEX IF NOT EXISTS "page_visits_timestamp_idx" ON "page_visits"("timestamp");`,
-        `CREATE INDEX IF NOT EXISTS "page_visits_visitorHash_idx" ON "page_visits"("visitorHash");`,
-        `CREATE INDEX IF NOT EXISTS "page_visits_path_idx" ON "page_visits"("path");`,
-        `DO $$
-        BEGIN
-          IF NOT EXISTS (
-            SELECT 1 FROM pg_constraint WHERE conname = 'activity_events_email_fkey'
-          ) THEN
-            ALTER TABLE "activity_events" ADD CONSTRAINT "activity_events_email_fkey" FOREIGN KEY ("email") REFERENCES "users"("email") ON DELETE CASCADE ON UPDATE CASCADE;
-          END IF;
-        END $$;`,
-      ];
-
-      for (const sql of statements) {
-        await client.$executeRawUnsafe(sql);
-      }
-      schemaEnsured = true;
-      console.warn('PostgreSQL schema auto-creation completed.');
-      return true;
-    }
-    throw err;
-  }
+  return { success: true, visit: newVisit, debounced: false };
 }
 
 export async function recordPageVisitAsync(data: {
@@ -1002,75 +850,50 @@ export async function recordPageVisitAsync(data: {
   userAgent?: string;
   visitorSessionId?: string;
 }): Promise<{ success: boolean; visit?: PageVisitRecord; debounced?: boolean }> {
-  const dbUrl = resolvePrismaDatabaseUrl();
-  if (prisma && dbUrl) {
-    try {
-      await ensureDatabaseSchemaAsync(prisma).catch(() => {});
-      const fiveSecondsAgo = new Date(Date.now() - 5000);
-      const duplicate = await prisma.pageVisit.findFirst({
-        where: {
-          path: data.path.trim(),
-          timestamp: { gte: fiveSecondsAgo },
-          OR: [
-            ...(data.visitorSessionId ? [{ visitorSessionId: data.visitorSessionId }] : []),
-            { visitorHash: data.visitorHash },
-          ],
-        },
-      });
+  const visitorKey = data.visitorSessionId || data.visitorHash;
+  const normalizedPath = data.path.trim();
 
-      if (duplicate) {
-        return {
-          success: true,
-          visit: {
-            id: duplicate.id,
-            timestamp: duplicate.timestamp.toISOString(),
-            visitorHash: duplicate.visitorHash,
-            maskedIp: duplicate.maskedIp,
-            path: duplicate.path,
-            referrer: duplicate.referrer || undefined,
-            userAgent: duplicate.userAgent || undefined,
-            visitorSessionId: duplicate.visitorSessionId || undefined,
-          },
-          debounced: true,
-        };
+  if (isGoogleDriveConfigured()) {
+    return mutateDriveDatabase(async (db) => {
+      const isDuplicate = isRecentDuplicateVisit(
+        visitorKey,
+        normalizedPath,
+        5000,
+        Date.now(),
+        db.visits
+      );
+
+      if (isDuplicate) {
+        const existing = db.visits.find((v) => {
+          const key = v.visitorSessionId || v.visitorHash;
+          return key === visitorKey && v.path.trim() === normalizedPath;
+        });
+        return { success: true, visit: existing, debounced: true };
       }
 
       const id = `vis_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-      const now = new Date();
-      const created = await prisma.pageVisit.create({
-        data: {
-          id,
-          timestamp: now,
-          visitorHash: data.visitorHash,
-          maskedIp: data.maskedIp,
-          path: data.path.trim(),
-          referrer: data.referrer ? data.referrer.trim() : null,
-          userAgent: data.userAgent ? data.userAgent.slice(0, 150) : null,
-          visitorSessionId: data.visitorSessionId || null,
-        },
-      });
+      const now = new Date().toISOString();
 
-      const record: PageVisitRecord = {
-        id: created.id,
-        timestamp: created.timestamp.toISOString(),
-        visitorHash: created.visitorHash,
-        maskedIp: created.maskedIp,
-        path: created.path,
-        referrer: created.referrer || undefined,
-        userAgent: created.userAgent || undefined,
-        visitorSessionId: created.visitorSessionId || undefined,
+      const newVisit: PageVisitRecord = {
+        id,
+        timestamp: now,
+        visitorHash: data.visitorHash,
+        maskedIp: data.maskedIp,
+        path: normalizedPath,
+        referrer: data.referrer ? data.referrer.trim() : undefined,
+        userAgent: data.userAgent ? data.userAgent.slice(0, 150) : undefined,
+        visitorSessionId: data.visitorSessionId || undefined,
       };
 
-      // Also mirror to local queue/store for offline callers and test consistency
-      persistNewVisitSync(record);
-
-      return { success: true, visit: record };
-    } catch (err) {
-      console.warn('Prisma PostgreSQL unavailable during visit recording; using local visits store:', err instanceof Error ? err.message : err);
-    }
+      db.visits.unshift(newVisit);
+      if (db.visits.length > 10000) {
+        db.visits = db.visits.slice(0, 10000);
+      }
+      return { success: true, visit: newVisit, debounced: false };
+    });
   }
 
-  // Fallback for local development and test environment
+  // Fallback for isolated unit tests
   return recordPageVisit(data);
 }
 
@@ -1088,87 +911,39 @@ export async function getVisitorStatsAsync(): Promise<{
   uniqueVisitors: number;
   todayVisitors: number;
   visits: (PageVisitRecord & { visitCount: number })[];
-  isPostgresConnected: boolean;
+  isDriveConnected: boolean;
   databaseStatus: 'connected' | 'query_failed' | 'unconfigured';
+  storageProvider: string;
+  folderName: string;
+  targetAccount: string;
   errorMessage?: string;
 }> {
-  const dbUrl = resolvePrismaDatabaseUrl();
-  if (prisma && dbUrl) {
+  if (isGoogleDriveConfigured()) {
     try {
-      await ensureDatabaseSchemaAsync(prisma).catch(() => {});
-      const { start, end } = getReportingDayBounds(REPORTING_TIMEZONE);
-
-      const [totalVisits, todayVisits, recentVisits] = await Promise.all([
-        prisma.pageVisit.count(),
-        prisma.pageVisit.findMany({
-          where: {
-            timestamp: {
-              gte: start,
-              lt: end,
-            },
-          },
-          select: {
-            visitorSessionId: true,
-            visitorHash: true,
-          },
-        }),
-        prisma.pageVisit.findMany({
-          take: 500,
-          orderBy: { timestamp: 'desc' },
-        }),
-      ]);
-
-      const todayKeys = new Set<string>();
-      for (const v of todayVisits) {
-        todayKeys.add(v.visitorSessionId || v.visitorHash);
-      }
-
-      // Compute distinct visitors across all time
-      let uniqueVisitors = 0;
-      try {
-        const distinctRows = await prisma.pageVisit.findMany({
-          select: {
-            visitorSessionId: true,
-            visitorHash: true,
-          },
-          distinct: ['visitorSessionId', 'visitorHash'],
-        });
-        const allKeys = new Set(distinctRows.map((r) => r.visitorSessionId || r.visitorHash));
-        uniqueVisitors = allKeys.size;
-      } catch {
-        uniqueVisitors = todayKeys.size;
-      }
-
-      // Map visit counts for recent visits
-      const visitsFormatted: (PageVisitRecord & { visitCount: number })[] = recentVisits.map((v) => ({
-        id: v.id,
-        timestamp: v.timestamp.toISOString(),
-        visitorHash: v.visitorHash,
-        maskedIp: v.maskedIp,
-        path: v.path,
-        referrer: v.referrer || undefined,
-        userAgent: v.userAgent || undefined,
-        visitorSessionId: v.visitorSessionId || undefined,
-        visitCount: 1,
-      }));
-
+      const db = await loadDriveDatabase();
+      const analytics = calculateVisitorAnalytics(REPORTING_TIMEZONE, new Date(), db.visits);
       return {
-        totalVisits,
-        uniqueVisitors,
-        todayVisitors: todayKeys.size,
-        visits: visitsFormatted,
-        isPostgresConnected: true,
+        ...analytics,
+        isDriveConnected: true,
         databaseStatus: 'connected',
+        storageProvider: 'Google Drive',
+        folderName: DEFAULT_FOLDER_NAME,
+        targetAccount: TARGET_GOOGLE_ACCOUNT,
       };
     } catch (dbErr) {
-      const errMessage = dbErr instanceof Error ? dbErr.message : String(dbErr);
-      console.warn('Prisma PostgreSQL query failed; falling back to durable visits store:', errMessage);
-      const localStats = getVisitorStats();
+      const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      console.warn('Google Drive database read failed:', msg);
       return {
-        ...localStats,
-        isPostgresConnected: false,
+        totalVisits: 0,
+        uniqueVisitors: 0,
+        todayVisitors: 0,
+        visits: [],
+        isDriveConnected: false,
         databaseStatus: 'query_failed',
-        errorMessage: errMessage.replace(/:\/\/.*@/, '://***@'),
+        storageProvider: 'Google Drive',
+        folderName: DEFAULT_FOLDER_NAME,
+        targetAccount: TARGET_GOOGLE_ACCOUNT,
+        errorMessage: msg,
       };
     }
   }
@@ -1176,8 +951,13 @@ export async function getVisitorStatsAsync(): Promise<{
   const localStats = getVisitorStats();
   return {
     ...localStats,
-    isPostgresConnected: false,
+    isDriveConnected: false,
     databaseStatus: 'unconfigured',
+    storageProvider: 'Google Drive',
+    folderName: DEFAULT_FOLDER_NAME,
+    targetAccount: TARGET_GOOGLE_ACCOUNT,
+    errorMessage:
+      'Google Drive API credentials not configured in Vercel. Set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN.',
   };
 }
 
@@ -1186,4 +966,7 @@ export function getRegisteredMembersCount(): number {
   return Array.isArray(db.users) ? db.users.length : 0;
 }
 
-
+export async function getRegisteredMembersCountAsync(): Promise<number> {
+  const db = await getDbAsync();
+  return Array.isArray(db.users) ? db.users.length : 0;
+}

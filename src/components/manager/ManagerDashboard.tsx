@@ -86,6 +86,9 @@ interface ManagerStatsData {
   databaseStatus?: 'connected' | 'query_failed' | 'unconfigured';
   databaseError?: string;
   databaseProvider?: string;
+  storageProvider?: string;
+  folderName?: string;
+  targetAccount?: string;
 }
 
 type DateFilterOption = 'all' | 'today' | '7days' | '30days';
@@ -484,12 +487,12 @@ export function ManagerDashboard() {
             {data.isDatabaseConnected ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 border border-emerald-200">
                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                PostgreSQL Connected
+                Google Drive Connected
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 border border-amber-200">
                 <AlertTriangle className="w-3 h-3 text-amber-600" />
-                Awaiting PostgreSQL
+                Awaiting Google Drive
               </span>
             )}
           </p>
@@ -580,7 +583,7 @@ export function ManagerDashboard() {
             <div className="flex items-center gap-2.5">
               <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
               <span>
-                <strong>Database Query Issue:</strong> PostgreSQL connection is configured, but queries encountered an error: {data.databaseError || 'Connection timed out'}. Using durable local fallback.
+                <strong>Storage Sync Issue:</strong> Google Drive connection encountered an issue: {data.databaseError || 'Connection timed out'}.
               </span>
             </div>
             <button
@@ -596,12 +599,12 @@ export function ManagerDashboard() {
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
-                <strong>Authoritative PostgreSQL Connected:</strong> All visitor analytics, member accounts, contact messages, and activity events are stored in Neon PostgreSQL ({data.databaseProvider || 'Active'}).
-                {data.totalVisits === 0 && ' (Database is newly initialized and ready to record events).'}
+                <strong>Google Drive Persistent Storage Active:</strong> All visitor analytics, member accounts, contact messages, and activity events are stored exclusively in Google Drive folder <code>{data.folderName || 'ToolForForever_Data'}</code> ({data.targetAccount || 'sameerrout2004@gmail.com'}).
+                {data.totalVisits === 0 && ' (Drive database is newly initialized and ready to record events).'}
               </span>
             </div>
             <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit">
-              PostgreSQL Active
+              Google Drive Active
             </span>
           </div>
         ) : (
@@ -609,12 +612,22 @@ export function ManagerDashboard() {
             <div className="flex items-center gap-2.5">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
-                <strong>PostgreSQL Awaiting Configuration:</strong> Production persistence requires a persistent PostgreSQL database. Local storage is not an authoritative production database. Connect <code>DATABASE_URL</code> in Vercel to activate PostgreSQL clustering across serverless instances.
+                <strong>Google Drive Awaiting Configuration:</strong> Production persistence requires Google Drive API credentials for <code>sameerrout2004@gmail.com</code> (Folder: <code>ToolForForever_Data</code>). Configure <code>GOOGLE_DRIVE_CLIENT_ID</code>, <code>GOOGLE_DRIVE_CLIENT_SECRET</code>, and <code>GOOGLE_DRIVE_REFRESH_TOKEN</code> in Vercel to activate cloud persistence.
               </span>
             </div>
-            <span className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit">
-              Awaiting PostgreSQL
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href="/api/admin/drive-oauth/connect"
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold text-2xs uppercase tracking-wider transition"
+              >
+                Connect Drive
+              </a>
+              <span className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-800 font-semibold text-2xs uppercase tracking-wider w-fit">
+                Awaiting Drive
+              </span>
+            </div>
           </div>
         )
       )}
@@ -635,11 +648,11 @@ export function ManagerDashboard() {
                   </span>
                   {data.isDatabaseConnected ? (
                     <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      PostgreSQL
+                      Google Drive
                     </span>
                   ) : (
                     <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting DB
+                      Awaiting Drive
                     </span>
                   )}
                 </div>
@@ -662,11 +675,11 @@ export function ManagerDashboard() {
                   </span>
                   {data.isDatabaseConnected ? (
                     <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      PostgreSQL
+                      Google Drive
                     </span>
                   ) : (
                     <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting DB
+                      Awaiting Drive
                     </span>
                   )}
                 </div>
@@ -689,11 +702,11 @@ export function ManagerDashboard() {
                   </span>
                   {data.isDatabaseConnected ? (
                     <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      PostgreSQL
+                      Google Drive
                     </span>
                   ) : (
                     <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting DB
+                      Awaiting Drive
                     </span>
                   )}
                 </div>
@@ -716,11 +729,11 @@ export function ManagerDashboard() {
                   </span>
                   {data.isDatabaseConnected ? (
                     <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      PostgreSQL
+                      Google Drive
                     </span>
                   ) : (
                     <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting DB
+                      Awaiting Drive
                     </span>
                   )}
                 </div>

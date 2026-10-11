@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const maskedIp = getMaskedIpIdentifier(clientIp, visitorHash);
     const referrer = sanitizeReferrer(rawReferrer);
 
-    // Record visit to PostgreSQL / storage
+    // Record visit to Google Drive storage
     const result = await recordPageVisitAsync({
       visitorHash,
       maskedIp,

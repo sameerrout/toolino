@@ -32,8 +32,7 @@ const globalForVisits = globalThis as unknown as {
 };
 
 /**
- * Resolves the filesystem path for the visits database.
- * Supports custom override via VISITS_DATA_PATH for test isolation.
+ * Resolves the filesystem path for test isolation and local development.
  */
 export function getVisitsFilePath(): string {
   if (process.env.VISITS_DATA_PATH) {
@@ -47,8 +46,7 @@ export function getVisitsFilePath(): string {
 }
 
 /**
- * Ensures the target visits file and directory exist.
- * Automatically migrates existing historical visits from .data/db.json if visits.json is new.
+ * Ensures the target visits storage exists for local testing.
  */
 function ensureVisitsStorage(): string {
   const filePath = getVisitsFilePath();
@@ -60,7 +58,6 @@ function ensureVisitsStorage(): string {
     }
 
     if (!fs.existsSync(filePath)) {
-      // Check if legacy .data/db.json exists and contains historical visits
       let initialVisits: PageVisitRecord[] = [];
       try {
         const legacyDbPath = path.join(process.cwd(), '.data', 'db.json');
@@ -85,7 +82,7 @@ function ensureVisitsStorage(): string {
 }
 
 /**
- * Loads persisted visits from disk, keeping in-memory cache synchronized with disk mtime.
+ * Loads visits from disk (used for unit test suites and offline development).
  */
 export function loadPersistedVisits(): PageVisitRecord[] {
   try {
@@ -119,7 +116,7 @@ export function loadPersistedVisits(): PageVisitRecord[] {
 }
 
 /**
- * Writes visits to disk with atomic write, sequential queue, and Windows file-lock retries.
+ * Writes visits to disk with atomic write and retries.
  */
 async function writeVisitsWithRetry(visits: PageVisitRecord[]): Promise<void> {
   const filePath = ensureVisitsStorage();
@@ -136,18 +133,16 @@ async function writeVisitsWithRetry(visits: PageVisitRecord[]): Promise<void> {
       try {
         fs.renameSync(tempPath, filePath);
       } catch {
-        // On Windows with OneDrive sync or open handles, renameSync may fail; fallback to direct write
         fs.writeFileSync(filePath, serialized, 'utf-8');
         if (fs.existsSync(tempPath)) {
           try {
             fs.unlinkSync(tempPath);
           } catch {
-            // Ignore temporary cleanup failure
+            // Ignore
           }
         }
       }
 
-      // Update in-memory cache and timestamp
       globalForVisits.__toolino_visits_cache__ = visits;
       try {
         const stat = fs.statSync(filePath);
@@ -159,67 +154,30 @@ async function writeVisitsWithRetry(visits: PageVisitRecord[]): Promise<void> {
     } catch (err) {
       if (attempts >= maxAttempts) {
         console.error(`Failed to persist visits after ${maxAttempts} attempts:`, err);
-        // Ensure memory cache is at least kept updated
         globalForVisits.__toolino_visits_cache__ = visits;
         return;
       }
-      // Wait with backoff before retrying
       await new Promise((resolve) => setTimeout(resolve, 20 * attempts));
     }
   }
 }
 
 /**
- * Synchronizes visit to Prisma PostgreSQL database if DATABASE_URL is reachable.
- */
-async function syncToPrismaIfConnected(visit: PageVisitRecord): Promise<void> {
-  if (!process.env.DATABASE_URL) return;
-  try {
-    const { prisma } = await import('@/lib/db');
-    if (!prisma?.pageVisit?.create) return;
-    await prisma.pageVisit
-      .create({
-        data: {
-          id: visit.id,
-          timestamp: new Date(visit.timestamp),
-          visitorHash: visit.visitorHash,
-          maskedIp: visit.maskedIp,
-          path: visit.path,
-          referrer: visit.referrer || null,
-          userAgent: visit.userAgent || null,
-          visitorSessionId: visit.visitorSessionId || null,
-        },
-      })
-      .catch(() => {
-        // Gracefully ignore when local development database server is unreachable
-      });
-  } catch {
-    // Ignore Prisma import or driver errors
-  }
-}
-
-/**
- * Persists a new visit using an atomic sequential write queue to prevent concurrent race conditions.
+ * Persists a new visit to disk.
  */
 export async function persistNewVisit(visit: PageVisitRecord): Promise<void> {
-  // Chain through sequential write queue
   const currentQueue = globalForVisits.__toolino_write_queue__ || Promise.resolve();
 
   const writeOperation = currentQueue
     .catch(() => {})
     .then(async () => {
       const existing = loadPersistedVisits();
-      // Ensure visit is not already inserted
       if (existing.some((v) => v.id === visit.id)) {
         return;
       }
 
-      // Prepend newest visit first, maintain bound of 10,000 visits
       const updated = [visit, ...existing].slice(0, 10000);
       await writeVisitsWithRetry(updated);
-
-      // Durably replicate to Prisma PostgreSQL in background if configured
-      syncToPrismaIfConnected(visit).catch(() => {});
     });
 
   globalForVisits.__toolino_write_queue__ = writeOperation;
@@ -227,7 +185,7 @@ export async function persistNewVisit(visit: PageVisitRecord): Promise<void> {
 }
 
 /**
- * Synchronous append fallback for synchronous callers, updating both memory cache and disk.
+ * Synchronous append fallback for synchronous callers.
  */
 export function persistNewVisitSync(visit: PageVisitRecord): void {
   const existing = loadPersistedVisits();
@@ -245,23 +203,21 @@ export function persistNewVisitSync(visit: PageVisitRecord): void {
   } catch (err) {
     console.error('Failed to sync write visit:', err);
   }
-
-  // Durably replicate to Prisma PostgreSQL in background if configured
-  syncToPrismaIfConnected(visit).catch(() => {});
 }
 
 /**
  * Durable deduplication check:
- * Returns true if a visit from the same stable visitor key to the same path
- * was recorded within the debounce window (default: 5000ms).
+ * Returns true if a visit from the same visitor key to the same path
+ * was recorded within the debounce window.
  */
 export function isRecentDuplicateVisit(
   visitorKey: string,
   normalizedPath: string,
   debounceMs = 5000,
-  referenceTime = Date.now()
+  referenceTime = Date.now(),
+  visitList?: PageVisitRecord[]
 ): boolean {
-  const visits = loadPersistedVisits();
+  const visits = visitList || loadPersistedVisits();
   const cutoff = referenceTime - debounceMs;
 
   return visits.some((v) => {
@@ -274,17 +230,18 @@ export function isRecentDuplicateVisit(
 }
 
 /**
- * Computes authoritative analytics metrics:
+ * Computes authoritative analytics metrics from a list of visits:
  * 1. Total Visits: Count of all valid persisted page views
- * 2. Unique Visitors: Count of distinct stable visitor keys (visitorSessionId || visitorHash)
+ * 2. Unique Visitors: Count of distinct stable visitor keys
  * 3. Today's Visitors: Count of distinct visitors who visited today in Asia/Kolkata timezone
  * 4. Visits list enriched with total visitCount per visitor
  */
 export function calculateVisitorAnalytics(
   timeZone = REPORTING_TIMEZONE,
-  referenceDate = new Date()
+  referenceDate = new Date(),
+  visitList?: PageVisitRecord[]
 ): VisitorAnalyticsSummary {
-  const visits = loadPersistedVisits();
+  const visits = visitList || loadPersistedVisits();
 
   // Map visit count per unique visitor key across all time
   const visitCountsByKey = new Map<string, number>();
@@ -296,7 +253,7 @@ export function calculateVisitorAnalytics(
   const totalVisits = visits.length;
   const uniqueVisitors = visitCountsByKey.size;
 
-  // Today's visitors: distinct visitors who visited today in the reporting timezone
+  // Today's visitors in the reporting timezone
   const todayVisitorKeys = new Set<string>();
   for (const v of visits) {
     if (isTodayInReportingTimezone(v.timestamp, timeZone, referenceDate)) {
