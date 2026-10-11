@@ -118,7 +118,35 @@ export async function GET(request: NextRequest) {
     const refreshToken = (tokenData.refresh_token as string) || '';
     const accessToken = (tokenData.access_token as string) || '';
 
-    // 4. Provision Gmail labels immediately with access token
+    // 4. Identity Verification: Verify that the authenticated account is strictly sameerrout2006@gmail.com
+    if (accessToken) {
+      const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (userinfoRes.ok) {
+        const userInfo = await userinfoRes.json();
+        const authenticatedEmail = (userInfo.email || '').trim().toLowerCase();
+        if (authenticatedEmail !== TARGET_GMAIL_ACCOUNT.toLowerCase()) {
+          return new NextResponse(
+            `<!DOCTYPE html>
+            <html lang="en">
+              <head><title>Unauthorized Google Account — ToolForForever</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+              <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 24px; color: #1e293b; background: #f8fafc;">
+                <div style="background: white; border: 1px solid #fca5a5; border-radius: 12px; padding: 24px;">
+                  <h2 style="color: #b91c1c; margin-top: 0;">Access Denied: Account Mismatch</h2>
+                  <p>You completed Google sign-in with: <strong>${authenticatedEmail}</strong></p>
+                  <p>ToolForForever storage strictly requires authorization for: <strong>${TARGET_GMAIL_ACCOUNT}</strong>.</p>
+                  <a href="/api/admin/gmail-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Retry with ${TARGET_GMAIL_ACCOUNT}</a>
+                </div>
+              </body>
+            </html>`,
+            { headers: { 'Content-Type': 'text/html; charset=UTF-8' }, status: 403 }
+          );
+        }
+      }
+    }
+
+    // 5. Provision Gmail labels immediately with access token
     let labelProvisionStatus = '';
     if (accessToken) {
       try {
@@ -129,6 +157,11 @@ export async function GET(request: NextRequest) {
         labelProvisionStatus = `Labels will be provisioned once refresh token is saved (${lErr instanceof Error ? lErr.message : String(lErr)}).`;
       }
     }
+
+    // 6. Security Protection: Check Manager session before revealing the sensitive refresh token
+    const { requireManagerSession } = await import('@/lib/auth');
+    const managerSession = await requireManagerSession(request);
+    const isManager = Boolean(managerSession);
 
     const htmlResponse = new NextResponse(
       `<!DOCTYPE html>
@@ -145,30 +178,39 @@ export async function GET(request: NextRequest) {
             .copy-btn { background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
             .step { margin: 20px 0; padding-left: 14px; border-left: 3px solid #3b82f6; }
             code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+            .security-alert { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; margin: 14px 0; font-size: 14px; color: #1e40af; }
           </style>
         </head>
         <body>
           <div class="card">
-            <span class="badge-success">OAuth Authorization Successful</span>
-            <h2 style="margin: 0 0 8px; color: #0f172a;">Gmail Storage Connected!</h2>
+            <span class="badge-success">&#10004; Account Verified: ${TARGET_GMAIL_ACCOUNT}</span>
+            <h2 style="margin: 0 0 8px; color: #0f172a;">Gmail Storage Authorized!</h2>
             <p style="color: #475569; margin-top: 0;">
-              Account: <strong>${TARGET_GMAIL_ACCOUNT}</strong> | Labels: <strong>ToolForForever/*</strong>
+              Target Account: <strong>${TARGET_GMAIL_ACCOUNT}</strong> | Labels: <strong>ToolForForever/*</strong>
             </p>
             ${labelProvisionStatus ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; color: #166534; font-size: 13px; margin: 12px 0;">&#10004; ${labelProvisionStatus}</div>` : ''}
 
             ${
               refreshToken
-                ? `<div class="step">
-                    <strong>Step 1: Copy your Permanent Refresh Token</strong>
-                    <div class="token-box" id="tokenBox">${refreshToken}</div>
-                    <button class="copy-btn" onclick="navigator.clipboard.writeText('${refreshToken}'); alert('Refresh token copied to clipboard!');">Copy Refresh Token</button>
-                  </div>
-                  <div class="step">
-                    <strong>Step 2: Save in Vercel Environment Variables</strong>
-                    <p style="margin: 6px 0; font-size: 14px;">Key: <code>GMAIL_STORAGE_REFRESH_TOKEN</code></p>
-                    <p style="margin: 6px 0; font-size: 14px;">Value: <em>(The copied refresh token above)</em></p>
-                    <p style="margin: 6px 0; font-size: 13px; color: #64748b;">Ensure <strong>Production</strong> is checked, then trigger a <strong>Redeploy</strong> in Vercel.</p>
-                  </div>`
+                ? isManager
+                  ? `<div class="step">
+                      <strong>Step 1: Authorized Manager Token Access</strong>
+                      <p style="margin: 6px 0; font-size: 13px; color: #64748b;">Authenticated Manager: <code>${managerSession?.email || ''}</code></p>
+                      <div class="token-box" id="tokenBox">${refreshToken}</div>
+                      <button class="copy-btn" onclick="navigator.clipboard.writeText('${refreshToken}'); alert('Refresh token copied to clipboard!');">Copy Refresh Token</button>
+                    </div>
+                    <div class="step">
+                      <strong>Step 2: Save in Vercel Environment Variables</strong>
+                      <p style="margin: 6px 0; font-size: 14px;">Key: <code>GMAIL_STORAGE_REFRESH_TOKEN</code></p>
+                      <p style="margin: 6px 0; font-size: 14px;">Value: <em>(The copied refresh token above)</em></p>
+                      <p style="margin: 6px 0; font-size: 13px; color: #64748b;">Ensure <strong>Production</strong> is checked, then trigger a <strong>Redeploy</strong> in Vercel.</p>
+                    </div>`
+                  : `<div class="security-alert">
+                      <strong>Security Notice:</strong> Authorization with Google was successful. To view or copy the generated refresh token, sign in to the <a href="/manager" style="color: #1d4ed8; font-weight: 600;">Manager Dashboard</a> with authorized manager credentials, or use the local offline tool: <code>node scripts/authorize-gmail.mjs</code>.
+                    </div>
+                    <div style="margin-top: 16px;">
+                      <a href="/manager" style="display: inline-block; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">Sign in to Manager Dashboard</a>
+                    </div>`
                 : `<div style="background: #fef3c7; border: 1px solid #fde68a; padding: 14px; border-radius: 8px; margin: 16px 0;">
                     <strong>Notice:</strong> Google did not return a new refresh token because this application was authorized previously without full token revocation. To force Google to issue a new refresh token:
                     <br /><br />

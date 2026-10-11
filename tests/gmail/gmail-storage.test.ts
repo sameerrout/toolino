@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import {
   cleanEnv,
@@ -270,7 +270,103 @@ describe('ToolForForever - Gmail API Storage & Auth Suite', () => {
     });
   });
 
-  describe('7. Gmail Storage Health Status Endpoint (/api/admin/gmail-oauth/status)', () => {
+  describe('7. Gmail Storage Security Protection & Identity Verification', () => {
+    it('rejects callback with 403 when authenticated Google account does not match sameerrout2006@gmail.com', async () => {
+      const originalFetch = global.fetch;
+      // Mock Google token exchange returning tokens
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes('oauth2.googleapis.com/token')) {
+          return {
+            ok: true,
+            json: async () => ({
+              access_token: 'mock_access_token',
+              refresh_token: 'mock_refresh_token',
+            }),
+          };
+        }
+        if (url.includes('googleapis.com/oauth2/v2/userinfo')) {
+          // Returning wrong email
+          return {
+            ok: true,
+            json: async () => ({
+              email: 'attacker@evil.com',
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({}) };
+      }) as unknown as typeof fetch;
+
+      try {
+        const req = new NextRequest(
+          'http://localhost:3000/api/admin/gmail-oauth/callback?code=mock_code&state=valid_state',
+          {
+            headers: {
+              cookie: 'tff_gmail_oauth_state=valid_state',
+            },
+          }
+        );
+        const res = await callbackGetHandler(req);
+        expect(res.status).toBe(403);
+        const html = await res.text();
+        expect(html).toContain('Access Denied: Account Mismatch');
+        expect(html).toContain(TARGET_GMAIL_ACCOUNT);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('masks refresh token and prompts for Manager Dashboard when not manager-authenticated', async () => {
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes('oauth2.googleapis.com/token')) {
+          return {
+            ok: true,
+            json: async () => ({
+              access_token: 'mock_access_token',
+              refresh_token: 'mock_sensitive_refresh_token_123',
+            }),
+          };
+        }
+        if (url.includes('googleapis.com/oauth2/v2/userinfo')) {
+          return {
+            ok: true,
+            json: async () => ({
+              email: TARGET_GMAIL_ACCOUNT,
+            }),
+          };
+        }
+        if (url.includes('labels')) {
+          return {
+            ok: true,
+            json: async () => ({ labels: [] }),
+          };
+        }
+        return { ok: true, json: async () => ({}) };
+      }) as unknown as typeof fetch;
+
+      try {
+        const req = new NextRequest(
+          'http://localhost:3000/api/admin/gmail-oauth/callback?code=mock_code&state=valid_state',
+          {
+            headers: {
+              cookie: 'tff_gmail_oauth_state=valid_state',
+            },
+          }
+        );
+        const res = await callbackGetHandler(req);
+        expect(res.status).toBe(200);
+        const html = await res.text();
+        // Sensitive token must NOT be directly exposed to unauthorized callers
+        expect(html).not.toContain('mock_sensitive_refresh_token_123');
+        expect(html).toContain('Security Notice:');
+        expect(html).toContain('Manager Dashboard');
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe('8. Gmail Storage Health Status Endpoint (/api/admin/gmail-oauth/status)', () => {
     it('returns unconfigured status when credentials are not set', async () => {
       const res = await statusGetHandler();
       expect(res.status).toBe(200);
