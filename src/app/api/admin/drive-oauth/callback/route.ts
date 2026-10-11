@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cleanEnv } from '@/lib/drive/googleDriveClient';
+import {
+  resolveServerEnv,
+  getRootDataFolderId,
+  DEFAULT_FOLDER_NAME,
+  TARGET_GOOGLE_ACCOUNT,
+} from '@/lib/drive/googleDriveClient';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
@@ -9,17 +15,22 @@ export async function GET(request: NextRequest) {
   const incomingState = searchParams.get('state');
   const error = searchParams.get('error');
 
-  const clientId = cleanEnv(
-    process.env.GOOGLE_DRIVE_CLIENT_ID ||
-    process.env.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID ||
-    process.env.GOOGLE_CLIENT_ID ||
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-  );
+  const clientIdMatch = resolveServerEnv([
+    'GOOGLE_DRIVE_CLIENT_ID',
+    'GOOGLE_CLIENT_ID',
+    'GDRIVE_CLIENT_ID',
+    'NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID',
+    'NEXT_PUBLIC_GOOGLE_CLIENT_ID',
+  ]);
 
-  const clientSecret = cleanEnv(
-    process.env.GOOGLE_DRIVE_CLIENT_SECRET ||
-    process.env.GOOGLE_CLIENT_SECRET
-  );
+  const clientSecretMatch = resolveServerEnv([
+    'GOOGLE_DRIVE_CLIENT_SECRET',
+    'GOOGLE_CLIENT_SECRET',
+    'GDRIVE_CLIENT_SECRET',
+  ]);
+
+  const clientId = clientIdMatch?.value || '';
+  const clientSecret = clientSecretMatch?.value || '';
 
   const host = request.headers.get('host') || 'www.toolforforever.com';
   const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
@@ -33,10 +44,12 @@ export async function GET(request: NextRequest) {
       `<!DOCTYPE html>
       <html lang="en">
         <head><title>Google Drive Authorization Failed</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 24px; color: #1e293b;">
-          <h2 style="color: #b91c1c;">Authorization Cancelled or Denied</h2>
-          <p>Google returned an error: <strong>${error}</strong></p>
-          <a href="/api/admin/drive-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Retry Authorization</a>
+        <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 24px; color: #1e293b; background: #f8fafc;">
+          <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+            <h2 style="color: #b91c1c; margin-top: 0;">Authorization Cancelled or Denied</h2>
+            <p>Google returned an error: <strong>${error}</strong></p>
+            <a href="/api/admin/drive-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Retry Authorization</a>
+          </div>
         </body>
       </html>`,
       { headers: { 'Content-Type': 'text/html; charset=UTF-8' } }
@@ -52,11 +65,13 @@ export async function GET(request: NextRequest) {
         `<!DOCTYPE html>
         <html lang="en">
           <head><title>OAuth Security Check Failed</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-          <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 24px; color: #1e293b;">
-            <h2 style="color: #b91c1c;">OAuth State Validation Failed</h2>
-            <p>The authorization request could not be validated or has expired (CSRF protection).</p>
-            <p>Please restart the authorization process by clicking below:</p>
-            <a href="/api/admin/drive-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Restart Authorization</a>
+          <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 24px; color: #1e293b; background: #f8fafc;">
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+              <h2 style="color: #b91c1c; margin-top: 0;">OAuth State Validation Failed</h2>
+              <p>The authorization request could not be validated or has expired (CSRF protection).</p>
+              <p>Please restart the authorization process by clicking below:</p>
+              <a href="/api/admin/drive-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Restart Authorization</a>
+            </div>
           </body>
         </html>`,
         { headers: { 'Content-Type': 'text/html; charset=UTF-8' }, status: 403 }
@@ -88,11 +103,13 @@ export async function GET(request: NextRequest) {
         `<!DOCTYPE html>
         <html lang="en">
           <head><title>Token Exchange Failed</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-          <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 24px; color: #1e293b;">
-            <h2 style="color: #b91c1c;">Google Token Exchange Failed</h2>
-            <pre style="background: #f1f5f9; padding: 16px; border-radius: 8px; overflow-x: auto;">${errText}</pre>
-            <p>Please confirm that <code>GOOGLE_DRIVE_CLIENT_SECRET</code> matches your Google Cloud Console Client Secret exactly.</p>
-            <a href="/api/admin/drive-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Try Again</a>
+          <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 24px; color: #1e293b; background: #f8fafc;">
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+              <h2 style="color: #b91c1c; margin-top: 0;">Google Token Exchange Failed</h2>
+              <pre style="background: #f1f5f9; padding: 16px; border-radius: 8px; overflow-x: auto;">${errText}</pre>
+              <p>Please confirm that <code>GOOGLE_DRIVE_CLIENT_SECRET</code> matches your Google Cloud Console Client Secret exactly.</p>
+              <a href="/api/admin/drive-oauth/connect" style="display: inline-block; margin-top: 16px; padding: 10px 18px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px;">Try Again</a>
+            </div>
           </body>
         </html>`,
         { headers: { 'Content-Type': 'text/html; charset=UTF-8' }, status: 500 }
@@ -101,6 +118,18 @@ export async function GET(request: NextRequest) {
 
     const tokenData = await tokenRes.json();
     const refreshToken = (tokenData.refresh_token as string) || '';
+    const accessToken = (tokenData.access_token as string) || '';
+
+    // If access token was received, immediately verify / provision target Google Drive folder
+    let folderProvisionStatus = '';
+    if (accessToken) {
+      try {
+        const folderId = await getRootDataFolderId(accessToken);
+        folderProvisionStatus = `Verified dedicated folder '${DEFAULT_FOLDER_NAME}' (Folder ID: ${folderId}) in Google Drive.`;
+      } catch (fErr) {
+        folderProvisionStatus = `Note: Folder check will complete once refresh token is active (${fErr instanceof Error ? fErr.message : String(fErr)}).`;
+      }
+    }
 
     const htmlResponse = new NextResponse(
       `<!DOCTYPE html>
@@ -124,8 +153,9 @@ export async function GET(request: NextRequest) {
             <span class="badge-success">OAuth Authorization Successful</span>
             <h2 style="margin: 0 0 8px; color: #0f172a;">Google Drive Connected!</h2>
             <p style="color: #475569; margin-top: 0;">
-              Account: <strong>sameerrout2004@gmail.com</strong> | Dedicated Folder: <strong>ToolForForever_Data</strong>
+              Account: <strong>${TARGET_GOOGLE_ACCOUNT}</strong> | Dedicated Folder: <strong>${DEFAULT_FOLDER_NAME}</strong>
             </p>
+            ${folderProvisionStatus ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; color: #166534; font-size: 13px; margin: 12px 0;">&#10004; ${folderProvisionStatus}</div>` : ''}
 
             ${
               refreshToken

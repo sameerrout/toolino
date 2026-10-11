@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import {
   cleanEnv,
+  resolveServerEnv,
   getGoogleDriveConfig,
   getDriveEnvDiagnostics,
   TARGET_GOOGLE_ACCOUNT,
@@ -21,6 +22,7 @@ describe('Google Drive Exclusive Storage & OAuth Suite', () => {
   beforeEach(() => {
     process.env = { ...originalEnv };
     delete process.env.GOOGLE_DRIVE_CLIENT_ID;
+    delete process.env['GOOGLE_DRIVE_CLIENT_ID '];
     delete process.env.GOOGLE_DRIVE_CLIENT_SECRET;
     delete process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
     delete process.env.GOOGLE_DRIVE_FOLDER_NAME;
@@ -37,36 +39,50 @@ describe('Google Drive Exclusive Storage & OAuth Suite', () => {
       expect(cleanEnv(undefined)).toBe('');
     });
 
+    it('resolveServerEnv resiliently handles trailing whitespace in key names', () => {
+      // Simulate user copy-pasting key name with trailing space in Vercel
+      process.env['GOOGLE_DRIVE_CLIENT_ID '] = 'test-id.apps.googleusercontent.com';
+      const resolved = resolveServerEnv(['GOOGLE_DRIVE_CLIENT_ID']);
+      expect(resolved).not.toBeNull();
+      expect(resolved?.value).toBe('test-id.apps.googleusercontent.com');
+    });
+
     it('returns null from getGoogleDriveConfig when credentials are missing', () => {
       expect(getGoogleDriveConfig()).toBeNull();
       expect(isGoogleDriveConfigured()).toBe(false);
     });
 
-    it('successfully resolves config when all variables are provided', () => {
+    it('successfully resolves config when all variables are validly provided', () => {
       process.env.GOOGLE_DRIVE_CLIENT_ID = 'test-client-id.apps.googleusercontent.com';
-      process.env.GOOGLE_DRIVE_CLIENT_SECRET = 'GOCSPX-secret123';
+      process.env.GOOGLE_DRIVE_CLIENT_SECRET = 'GOCSPX-secret1234567890123456';
       process.env.GOOGLE_DRIVE_REFRESH_TOKEN = '1//04test_refresh_token';
 
       const cfg = getGoogleDriveConfig();
       expect(cfg).not.toBeNull();
       expect(cfg?.clientId).toBe('test-client-id.apps.googleusercontent.com');
-      expect(cfg?.clientSecret).toBe('GOCSPX-secret123');
+      expect(cfg?.clientSecret).toBe('GOCSPX-secret1234567890123456');
       expect(cfg?.refreshToken).toBe('1//04test_refresh_token');
       expect(cfg?.folderName).toBe(DEFAULT_FOLDER_NAME);
       expect(cfg?.targetAccount).toBe(TARGET_GOOGLE_ACCOUNT);
       expect(isGoogleDriveConfigured()).toBe(true);
     });
 
-    it('automatically detects and corrects accidentally swapped Client ID and Secret', () => {
-      // Intentionally swapped: Secret in Client ID field, Client ID in Secret field
+    it('validates swapped credentials safely without auto-modifying them', () => {
+      // Swapped format: secret in client ID field, client ID in secret field
       process.env.GOOGLE_DRIVE_CLIENT_ID = 'GOCSPX-secret123';
       process.env.GOOGLE_DRIVE_CLIENT_SECRET = 'test-client-id.apps.googleusercontent.com';
       process.env.GOOGLE_DRIVE_REFRESH_TOKEN = '1//04test_refresh_token';
 
+      // Rule: Do not automatically swap or modify credentials based only on their apparent format
       const cfg = getGoogleDriveConfig();
-      expect(cfg).not.toBeNull();
-      expect(cfg?.clientId).toBe('test-client-id.apps.googleusercontent.com');
-      expect(cfg?.clientSecret).toBe('GOCSPX-secret123');
+      expect(cfg).toBeNull(); // Should NOT use swapped credentials
+
+      const diagnostics = getDriveEnvDiagnostics();
+      expect(diagnostics.validationPassed).toBe(false);
+      expect(diagnostics.clientIdFormat).toBe('looks_like_secret');
+      expect(diagnostics.clientSecretFormat).toBe('looks_like_client_id');
+      expect(diagnostics.validationErrors.length).toBeGreaterThan(0);
+      expect(diagnostics.validationErrors[0]).toContain('GOCSPX-');
     });
 
     it('returns accurate diagnostics without exposing secret values', () => {
@@ -78,6 +94,7 @@ describe('Google Drive Exclusive Storage & OAuth Suite', () => {
       expect(diagnostics.hasRefreshToken).toBe(false);
       expect(diagnostics.clientIdFormat).toBe('valid_google_client_id');
       expect(diagnostics.targetAccount).toBe(TARGET_GOOGLE_ACCOUNT);
+      expect(diagnostics.deployment).toBeDefined();
     });
   });
 
@@ -112,15 +129,16 @@ describe('Google Drive Exclusive Storage & OAuth Suite', () => {
 
       expect(res.status).toBe(200);
       const html = await res.text();
-      expect(html).toContain('Missing GOOGLE_DRIVE_CLIENT_ID at Runtime');
+      expect(html).toContain('Google Drive OAuth Credentials Check');
       expect(html).toContain('sameerrout2004@gmail.com');
       expect(html).toContain('ToolForForever_Data');
       expect(html).toContain('https://www.toolforforever.com/api/admin/drive-oauth/callback');
+      expect(html).toContain('Active Production Deployment Metadata');
     });
 
     it('redirects to Google Accounts OAuth with CSRF state cookie when Client ID is configured', async () => {
       process.env.GOOGLE_DRIVE_CLIENT_ID = '12345.apps.googleusercontent.com';
-      process.env.GOOGLE_DRIVE_CLIENT_SECRET = 'GOCSPX-secret123';
+      process.env.GOOGLE_DRIVE_CLIENT_SECRET = 'GOCSPX-secret1234567890';
 
       const req = new NextRequest('http://localhost:3000/api/admin/drive-oauth/connect');
       const res = await connectGetHandler(req);
@@ -187,6 +205,7 @@ describe('Google Drive Exclusive Storage & OAuth Suite', () => {
       expect(json.hasClientId).toBe(false);
       expect(json.hasClientSecret).toBe(false);
       expect(json.hasRefreshToken).toBe(false);
+      expect(json.deployment).toBeDefined();
     });
   });
 });
