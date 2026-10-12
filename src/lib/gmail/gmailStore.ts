@@ -34,6 +34,9 @@ export interface UserRecord {
   role: 'user' | 'manager';
   createdAt: string;
   lastLoginAt: string;
+  loginCount?: number;
+  emailVerified?: boolean;
+  status?: 'active' | 'suspended';
   resetTokenHash?: string;
   resetTokenExpires?: string;
 }
@@ -69,13 +72,82 @@ export interface PageVisitRecord {
   visitorSessionId?: string;
 }
 
+export interface VisitorSessionRecord {
+  sessionId: string;
+  visitorHash: string;
+  maskedIp: string;
+  startTime: string;
+  lastActivityTime: string;
+  currentPath: string;
+  isAuthenticated: boolean;
+  userId?: string;
+  userEmail?: string;
+  userAgent?: string;
+  status: 'active' | 'idle' | 'expired';
+}
+
+export interface LoginEventRecord {
+  id: string;
+  userId?: string;
+  email: string;
+  timestamp: string;
+  method: 'google' | 'email';
+  eventType: 'login' | 'signup' | 'logout' | 'failed_login';
+  status: 'success' | 'failure';
+  failureReason?: string;
+  sessionId?: string;
+  maskedIp?: string;
+}
+
+export interface ToolExecutionRecord {
+  id: string;
+  toolSlug: string;
+  toolName: string;
+  userId?: string;
+  visitorSessionId?: string;
+  timestamp: string;
+  status: 'initiated' | 'completed' | 'failed';
+  durationMs?: number;
+  errorMessage?: string;
+}
+
 export interface DatabaseSchema {
   users: UserRecord[];
   toolUsage: Record<string, number>;
   events: ActivityEvent[];
   contactMessages: ContactMessage[];
   visits: PageVisitRecord[];
+  visitorSessions: VisitorSessionRecord[];
+  loginEvents: LoginEventRecord[];
+  toolExecutions: ToolExecutionRecord[];
 }
+
+export const INITIAL_MANAGERS: UserRecord[] = [
+  {
+    id: 'usr_mgr_sameer',
+    email: 'sameerrout2004@gmail.com',
+    name: 'Sameer Rout',
+    authProvider: 'google',
+    role: 'manager',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    lastLoginAt: '2025-01-01T00:00:00.000Z',
+    loginCount: 1,
+    emailVerified: true,
+    status: 'active',
+  },
+  {
+    id: 'usr_mgr_sony',
+    email: 'sonysampangi9@gmail.com',
+    name: 'Sony Sampangi',
+    authProvider: 'google',
+    role: 'manager',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    lastLoginAt: '2025-01-01T00:00:00.000Z',
+    loginCount: 1,
+    emailVerified: true,
+    status: 'active',
+  },
+];
 
 export const INITIAL_DATABASE: DatabaseSchema = {
   users: [],
@@ -83,6 +155,9 @@ export const INITIAL_DATABASE: DatabaseSchema = {
   events: [],
   contactMessages: [],
   visits: [],
+  visitorSessions: [],
+  loginEvents: [],
+  toolExecutions: [],
 };
 
 // Warm in-memory cache configuration
@@ -120,15 +195,27 @@ export function isGmailStorageConfigured(): boolean {
  */
 export function sanitizeDatabase(raw: Partial<DatabaseSchema> | null | undefined): DatabaseSchema {
   if (!raw || typeof raw !== 'object') {
-    return { ...INITIAL_DATABASE };
+    return {
+      users: [],
+      toolUsage: {},
+      events: [],
+      contactMessages: [],
+      visits: [],
+      visitorSessions: [],
+      loginEvents: [],
+      toolExecutions: [],
+    };
   }
 
   return {
-    users: Array.isArray(raw.users) ? raw.users : [],
+    users: Array.isArray(raw.users) ? [...raw.users] : [],
     toolUsage: raw.toolUsage && typeof raw.toolUsage === 'object' ? raw.toolUsage : {},
     events: Array.isArray(raw.events) ? raw.events : [],
     contactMessages: Array.isArray(raw.contactMessages) ? raw.contactMessages : [],
     visits: Array.isArray(raw.visits) ? raw.visits : [],
+    visitorSessions: Array.isArray(raw.visitorSessions) ? raw.visitorSessions : [],
+    loginEvents: Array.isArray(raw.loginEvents) ? raw.loginEvents : [],
+    toolExecutions: Array.isArray(raw.toolExecutions) ? raw.toolExecutions : [],
   };
 }
 

@@ -8,7 +8,7 @@ import {
   sanitizePath,
   sanitizeReferrer,
 } from '@/lib/analytics/visitor';
-import { recordPageVisitAsync } from '@/lib/db';
+import { recordPageVisitAsync, recordVisitorSessionHeartbeatAsync } from '@/lib/db';
 import { getServerSession } from '@/lib/auth';
 
 const VISITOR_COOKIE_NAME = 'tff_vid';
@@ -102,6 +102,17 @@ export async function POST(request: NextRequest) {
       userAgent: userAgent || undefined,
       visitorSessionId,
     });
+
+    // 8. Update active visitor session heartbeat
+    await recordVisitorSessionHeartbeatAsync({
+      sessionId: visitorSessionId,
+      visitorHash,
+      maskedIp,
+      currentPath: path,
+      userAgent: userAgent || undefined,
+      userId: session?.id,
+      userEmail: session?.email,
+    }).catch(() => {});
 
     const response = NextResponse.json({
       ok: true,

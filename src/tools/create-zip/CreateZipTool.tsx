@@ -49,7 +49,7 @@ interface CompletedArchive {
 export function CreateZipTool() {
   const profile = useDeviceProfile();
   const limits = useMemo(() => resolveLimits('create-zip', profile), [profile]);
-  const { run, cancel, running, progress, status, completed, total, error, cancelled } = useToolJob();
+  const { run, cancel, running, progress, status, completed, total, error, cancelled } = useToolJob('create-zip');
   const urls = useObjectUrls();
 
   const [entries, setEntries] = useState<ZipSourceFile[]>([]);

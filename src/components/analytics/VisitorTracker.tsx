@@ -72,5 +72,27 @@ export function VisitorTracker() {
     }
   }, [pathname]);
 
+  // Periodic heartbeat every 15 seconds to maintain live visitor active session
+  useEffect(() => {
+    if (typeof window === 'undefined' || !pathname || isExcludedPath(pathname)) return;
+
+    const interval = setInterval(() => {
+      if (document.hidden) return; // Do not send heartbeat if tab is in background
+
+      try {
+        fetch('/api/analytics/heartbeat/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: pathname }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {
+        // Non-blocking
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [pathname]);
+
   return null;
 }

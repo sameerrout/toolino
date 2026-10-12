@@ -8,7 +8,7 @@ import {
   sanitizePath,
   sanitizeReferrer,
 } from '@/lib/analytics/visitor';
-import { recordPageVisitAsync } from '@/lib/db';
+import { recordPageVisitAsync, recordVisitorSessionHeartbeatAsync } from '@/lib/db';
 
 const VISITOR_COOKIE_NAME = 'tff_vid';
 
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const maskedIp = getMaskedIpIdentifier(clientIp, visitorHash);
     const referrer = sanitizeReferrer(rawReferrer);
 
-    // Record visit to Google Drive storage
+    // Record visit to storage
     const result = await recordPageVisitAsync({
       visitorHash,
       maskedIp,
@@ -67,6 +67,14 @@ export async function POST(request: NextRequest) {
       userAgent: userAgent || undefined,
       visitorSessionId,
     });
+
+    await recordVisitorSessionHeartbeatAsync({
+      sessionId: visitorSessionId,
+      visitorHash,
+      maskedIp,
+      currentPath: path,
+      userAgent: userAgent || undefined,
+    }).catch(() => {});
 
     const response = NextResponse.json({
       ok: true,

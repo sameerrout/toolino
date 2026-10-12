@@ -80,7 +80,7 @@ const SITE_REDIRECTS = [
  */
 function readRegistry() {
   const source = readFileSync(join(ROOT, 'src', 'data', 'toolRegistry.ts'), 'utf8');
-  const blocks = source.split(/\n  \{\n/).slice(1);
+  const blocks = source.split(/\r?\n  \{\r?\n/).slice(1);
   const entries = [];
 
   for (const block of blocks) {

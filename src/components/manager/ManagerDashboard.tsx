@@ -1,1516 +1,636 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { Container } from '@/components/common/Container';
 import {
+  LayoutDashboard,
+  Radio,
   Users,
+  KeyRound,
+  Wrench,
+  Eye,
+  Mail,
   ShieldCheck,
   RefreshCw,
   AlertTriangle,
   ArrowLeft,
+  Calendar,
+  CheckCircle2,
   Clock,
   ExternalLink,
-  Search,
-  Trash2,
-  Loader2,
-  CheckCircle2,
+  Menu,
   X,
-  Inbox,
-  LayoutDashboard,
-  Eye,
-  Mail,
-  MessageSquare,
-  Check,
-  Calendar,
-  Globe,
-  ChevronLeft,
-  ChevronRight,
+  Shield,
 } from 'lucide-react';
 
-export interface VisitorHistoryItem {
-  id: string;
-  timestamp: string;
-  visitorHash: string;
-  maskedIp: string;
-  path: string;
-  referrer?: string;
-  userAgent?: string;
-  visitorSessionId?: string;
-  visitCount: number;
-}
+import {
+  DashboardTab,
+  DateFilterOption,
+  FullDashboardData,
+} from './types';
 
-interface UserItem {
-  id: string;
-  email: string;
-  name: string;
-  role?: string;
-  isManager?: boolean;
-  createdAt: string;
-  lastLoginAt: string;
-}
-
-interface ActivityEvent {
-  timestamp: string;
-  type: 'signup' | 'login' | 'tool_use' | 'member_delete';
-  email?: string;
-  toolSlug?: string;
-}
-
-export type ContactMessageStatus = 'unread' | 'read' | 'replied' | 'resolved';
-
-export interface ContactMessageItem {
-  id: string;
-  name: string;
-  email: string;
-  category: string;
-  message: string;
-  status: ContactMessageStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ManagerStatsData {
-  totalVisits: number;
-  uniqueVisitors: number;
-  todayVisitors: number;
-  registeredMembers: number;
-  totalUsers: number;
-  visits: VisitorHistoryItem[];
-  users: UserItem[];
-  recentEvents: ActivityEvent[];
-  totalMessages?: number;
-  unreadMessages?: number;
-  authenticatedAs: string;
-  isDatabaseConnected?: boolean;
-  databaseStatus?: 'connected' | 'query_failed' | 'unconfigured';
-  databaseError?: string;
-  databaseProvider?: string;
-  storageProvider?: string;
-  folderName?: string;
-  targetAccount?: string;
-}
-
-type DateFilterOption = 'all' | 'today' | '7days' | '30days';
+import { OverviewSection } from './OverviewSection';
+import { LiveVisitorsSection } from './LiveVisitorsSection';
+import { RegisteredUsersSection } from './RegisteredUsersSection';
+import { LoginHistorySection } from './LoginHistorySection';
+import { ToolUsageSection } from './ToolUsageSection';
+import { PageViewsSection } from './PageViewsSection';
+import { ContactMessagesSection } from './ContactMessagesSection';
+import { SystemStatusSection } from './SystemStatusSection';
+import { UserActivityModal } from './UserActivityModal';
 
 export function ManagerDashboard() {
-  const [data, setData] = useState<ManagerStatsData | null>(null);
+  const [data, setData] = useState<FullDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authError, setAuthError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'analytics' | 'messages'>('analytics');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
+  const [dateFilter, setDateFilter] = useState<DateFilterOption>('today');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string>('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Visitor history filters & pagination
-  const [pathSearch, setPathSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState<DateFilterOption>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const isMountedRef = useRef(true);
 
-  // Member management state
-  const [memberToDelete, setMemberToDelete] = useState<UserItem | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  // Messages state
-  const [messages, setMessages] = useState<ContactMessageItem[]>([]);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<ContactMessageItem | null>(null);
-  const [messageToDelete, setMessageToDelete] = useState<ContactMessageItem | null>(null);
-  const [deletingMessage, setDeletingMessage] = useState(false);
-  const [updatingMessageStatus, setUpdatingMessageStatus] = useState(false);
-  const [messageSearch, setMessageSearch] = useState('');
-  const [messageFilter, setMessageFilter] = useState<'all' | 'unread' | 'read' | 'replied' | 'resolved'>('all');
-
-  const fetchStats = async (isManualRefresh = false) => {
-    if (isManualRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/manager/stats/', {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-        },
-      });
-      if (res.status === 401 || res.status === 403) {
-        setAuthError(true);
-        throw new Error('Unauthorized: Manager authorization required.');
+  // Fetch full dashboard statistics
+  const fetchDashboardData = useCallback(
+    async (isManual = false) => {
+      if (isManual) {
+        setRefreshing(true);
       }
-      setAuthError(false);
-      if (!res.ok) {
-        const errorJson = await res.json().catch(() => ({}));
-        throw new Error(errorJson.error || 'Failed to load manager analytics data from server database.');
-      }
-      const json = await res.json();
-      setData(json);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Access denied.';
-      setError(msg);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+      setError(null);
 
-  const fetchMessages = async () => {
-    setLoadingMessages(true);
-    try {
-      const res = await fetch('/api/manager/messages/', {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-        },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (Array.isArray(json.messages)) {
-          setMessages(json.messages);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load contact messages:', err);
-    } finally {
-      setLoadingMessages(false);
-    }
-  };
-
-  const refreshAll = async () => {
-    await Promise.all([fetchStats(true), fetchMessages()]);
-  };
-
-  useEffect(() => {
-    fetchStats();
-    fetchMessages();
-  }, []);
-
-  const confirmDeleteMember = async () => {
-    if (!memberToDelete) return;
-    setDeleting(true);
-    setFeedback(null);
-    try {
-      const res = await fetch('/api/manager/delete-member/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: memberToDelete.id, email: memberToDelete.email }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || 'Unable to delete member. Please try again.');
-      }
-
-      const deletedId = memberToDelete.id;
-      const deletedEmail = memberToDelete.email;
-      const now = new Date().toISOString();
-
-      setData((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          registeredMembers: Math.max(0, prev.registeredMembers - 1),
-          totalUsers: Math.max(0, prev.totalUsers - 1),
-          users: prev.users.filter((u) => u.id !== deletedId),
-          recentEvents: [
-            {
-              timestamp: now,
-              type: 'member_delete' as const,
-              email: deletedEmail,
-            },
-            ...prev.recentEvents,
-          ].slice(0, 50),
-        };
-      });
-
-      setFeedback({ type: 'success', message: 'Member deleted successfully.' });
-      setMemberToDelete(null);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unable to delete member. Please try again.';
-      setFeedback({ type: 'error', message: msg });
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  // Open Message and automatically mark unread -> read
-  const handleViewMessage = async (msg: ContactMessageItem) => {
-    setSelectedMessage(msg);
-
-    if (msg.status === 'unread') {
       try {
-        const res = await fetch('/api/manager/messages/', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: msg.id, status: 'read' }),
+        const params = new URLSearchParams();
+        params.set('range', dateFilter);
+        if (dateFilter === 'custom' && customStart && customEnd) {
+          params.set('customStart', customStart);
+          params.set('customEnd', customEnd);
+        }
+
+        const res = await fetch(`/api/manager/stats/?${params.toString()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
         });
-        if (res.ok) {
-          const json = await res.json();
-          const updated = json.message as ContactMessageItem;
-          setSelectedMessage(updated);
-          setMessages((prev) => prev.map((m) => (m.id === msg.id ? updated : m)));
+
+        if (res.status === 401 || res.status === 403) {
+          if (isMountedRef.current) {
+            setAuthError(true);
+            setLoading(false);
+            setRefreshing(false);
+          }
+          return;
         }
-      } catch (err) {
-        console.error('Failed to auto-update unread status:', err);
-      }
-    }
-  };
 
-  // Manual status update
-  const handleUpdateStatus = async (id: string, newStatus: ContactMessageStatus) => {
-    setUpdatingMessageStatus(true);
-    try {
-      const res = await fetch('/api/manager/messages/', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: newStatus }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to update message status.');
-      }
-      const json = await res.json();
-      const updated = json.message as ContactMessageItem;
-      setSelectedMessage((prev) => (prev && prev.id === id ? updated : prev));
-      setMessages((prev) => prev.map((m) => (m.id === id ? updated : m)));
-      setFeedback({ type: 'success', message: `Message status updated to "${newStatus}".` });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to update status.';
-      setFeedback({ type: 'error', message: msg });
-    } finally {
-      setUpdatingMessageStatus(false);
-    }
-  };
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => null);
+          throw new Error(errBody?.error || `Server returned HTTP ${res.status}`);
+        }
 
-  // Delete message
-  const confirmDeleteMessage = async () => {
-    if (!messageToDelete) return;
-    setDeletingMessage(true);
-    try {
-      const res = await fetch(`/api/manager/messages/?id=${encodeURIComponent(messageToDelete.id)}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to delete message.');
-      }
-      const deletedId = messageToDelete.id;
-      setMessages((prev) => prev.filter((m) => m.id !== deletedId));
-      if (selectedMessage?.id === deletedId) {
-        setSelectedMessage(null);
-      }
-      setMessageToDelete(null);
-      setFeedback({ type: 'success', message: 'Message permanently deleted.' });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete message.';
-      setFeedback({ type: 'error', message: msg });
-    } finally {
-      setDeletingMessage(false);
-    }
-  };
-
-  // Filtered visitor logs
-  const filteredVisits = useMemo(() => {
-    if (!data?.visits) return [];
-    const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-
-    return data.visits.filter((visit) => {
-      // Path filter
-      if (pathSearch.trim()) {
-        const q = pathSearch.trim().toLowerCase();
-        const matchesPath = visit.path.toLowerCase().includes(q);
-        const matchesReferrer = visit.referrer ? visit.referrer.toLowerCase().includes(q) : false;
-        const matchesId = visit.maskedIp.toLowerCase().includes(q) || visit.id.toLowerCase().includes(q);
-        if (!matchesPath && !matchesReferrer && !matchesId) return false;
-      }
-
-      // Date range filter
-      if (dateFilter !== 'all') {
-        const visitTime = new Date(visit.timestamp).getTime();
-        if (dateFilter === 'today') {
-          const visitDateStr = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Asia/Kolkata',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-          }).format(new Date(visit.timestamp));
-
-          const todayDateStr = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Asia/Kolkata',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-          }).format(new Date());
-
-          if (visitDateStr !== todayDateStr) return false;
-        } else if (dateFilter === '7days') {
-          if (now - visitTime > 7 * oneDayMs) return false;
-        } else if (dateFilter === '30days') {
-          if (now - visitTime > 30 * oneDayMs) return false;
+        const json: FullDashboardData = await res.json();
+        if (isMountedRef.current) {
+          setData(json);
+          setLastRefreshedAt(
+            new Date().toLocaleTimeString('en-IN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            })
+          );
+          setLoading(false);
+          setRefreshing(false);
+        }
+      } catch (err: unknown) {
+        if (isMountedRef.current) {
+          console.error('Failed to fetch manager data:', err);
+          setError(err instanceof Error ? err.message : 'Failed to connect to manager database');
+          setLoading(false);
+          setRefreshing(false);
         }
       }
+    },
+    [dateFilter, customStart, customEnd]
+  );
 
-      return true;
-    });
-  }, [data?.visits, pathSearch, dateFilter]);
-
-  // Paginated visitor logs
-  const totalPages = Math.max(1, Math.ceil(filteredVisits.length / pageSize));
-  const paginatedVisits = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredVisits.slice(start, start + pageSize);
-  }, [filteredVisits, currentPage, pageSize]);
-
-  // Reset page when filters change
+  // Initial load & when date filter changes
   useEffect(() => {
-    setCurrentPage(1);
-  }, [pathSearch, dateFilter]);
+    isMountedRef.current = true;
+    fetchDashboardData(false);
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [fetchDashboardData]);
 
-  if (loading) {
-    return (
-      <Container className="py-16">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
-          <p className="text-sm font-medium text-slate-600">Verifying manager credentials and loading analytics...</p>
-        </div>
-      </Container>
-    );
-  }
+  // Periodic automatic polling (every 15 seconds)
+  useEffect(() => {
+    if (!autoRefresh) return;
 
+    const interval = setInterval(() => {
+      // Avoid polling when user has tab minimized or backgrounded
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+      fetchDashboardData(false);
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchDashboardData]);
+
+  // Navigation tabs definition
+  const navTabs: {
+    id: DashboardTab;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: number | string;
+    badgeVariant?: 'blue' | 'emerald' | 'amber';
+  }[] = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      icon: LayoutDashboard,
+    },
+    {
+      id: 'visitors',
+      label: 'Live Visitors',
+      icon: Radio,
+      badge: data?.liveVisitors?.totalActive ?? 0,
+      badgeVariant: 'emerald',
+    },
+    {
+      id: 'users',
+      label: 'Registered Users',
+      icon: Users,
+      badge: data?.registeredUsers?.totalCount ?? 0,
+      badgeVariant: 'blue',
+    },
+    {
+      id: 'logins',
+      label: 'Login History',
+      icon: KeyRound,
+    },
+    {
+      id: 'tools',
+      label: 'Tool Usage Analytics',
+      icon: Wrench,
+      badge: data?.toolUsage?.summary?.totalExecutions ?? 0,
+      badgeVariant: 'blue',
+    },
+    {
+      id: 'pageviews',
+      label: 'Page View Analytics',
+      icon: Eye,
+    },
+    {
+      id: 'messages',
+      label: 'Contact Messages',
+      icon: Mail,
+      badge: data?.contactMessages?.unread ? data.contactMessages.unread : undefined,
+      badgeVariant: 'amber',
+    },
+    {
+      id: 'system',
+      label: 'Security & System',
+      icon: ShieldCheck,
+    },
+  ];
+
+  // Auth Error Screen
   if (authError) {
     return (
-      <Container className="py-16 max-w-xl">
-        <div className="bg-white rounded-2xl border border-red-200 p-8 text-center space-y-5 shadow-xs">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto text-red-600">
-            <AlertTriangle className="w-6 h-6" />
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-2xl text-center space-y-5 border border-slate-200">
+          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <AlertTriangle className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Manager Authorization Required</h1>
-            <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-              You must be signed in with an authorized manager account to access this dashboard.
+            <h1 className="text-xl font-bold text-slate-900">Access Restricted</h1>
+            <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+              This Manager Dashboard is strictly reserved for verified authorized administrator accounts:
             </p>
+            <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-700 text-left space-y-1">
+              <div>• sameerrout2004@gmail.com</div>
+              <div>• sonysampangi9@gmail.com</div>
+            </div>
           </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
             <Link
-              href="/login"
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition"
+              href="/signin/?redirect=/manager/"
+              className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition"
             >
-              Sign In
+              Sign In as Manager
             </Link>
             <Link
               href="/"
-              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition"
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition"
             >
-              Return Home
+              Back to Home
             </Link>
           </div>
         </div>
-      </Container>
+      </div>
     );
   }
-
-  if (!data) {
-    return (
-      <Container className="py-16 max-w-xl">
-        <div className="bg-white rounded-2xl border border-amber-200 p-8 text-center space-y-5 shadow-xs">
-          <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-600">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Analytics Service Temporarily Unavailable</h1>
-            <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-              {error || 'Unable to load analytics data at this moment. You can retry or return home.'}
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => fetchStats()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition cursor-pointer flex items-center gap-1.5"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Retry Loading</span>
-            </button>
-            <Link
-              href="/"
-              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition"
-            >
-              Return Home
-            </Link>
-          </div>
-        </div>
-      </Container>
-    );
-  }
-
-  const unreadCount = messages.filter((m) => m.status === 'unread').length;
-
-  const filteredMessages = messages.filter((msg) => {
-    if (messageFilter !== 'all' && msg.status !== messageFilter) return false;
-    if (!messageSearch.trim()) return true;
-    const q = messageSearch.toLowerCase();
-    return (
-      msg.name.toLowerCase().includes(q) ||
-      msg.email.toLowerCase().includes(q) ||
-      msg.category.toLowerCase().includes(q) ||
-      msg.message.toLowerCase().includes(q)
-    );
-  });
 
   return (
-    <Container className="py-10 space-y-8">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 transition"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Home
-            </Link>
-            <span className="text-slate-300">/</span>
-            <span className="text-xs font-medium text-slate-700">Management</span>
-          </div>
-          <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            ToolForForever Manager Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-slate-600 flex flex-wrap items-center gap-2">
-            <span>Status:</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 border border-emerald-200">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              Manager Session Active ({data.authenticatedAs})
-            </span>
-            {data.isDatabaseConnected ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 border border-emerald-200">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                Gmail Storage Active
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 border border-amber-200">
-                <AlertTriangle className="w-3 h-3 text-amber-600" />
-                Awaiting Gmail
-              </span>
-            )}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={refreshAll}
-          disabled={refreshing}
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing || loadingMessages ? 'animate-spin' : ''}`} />
-          <span>{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
-        </button>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-px">
-        <button
-          type="button"
-          onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition cursor-pointer ${
-            activeTab === 'analytics'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <LayoutDashboard className="w-4 h-4" />
-          <span>Website Visitor Analytics</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('messages')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition cursor-pointer ${
-            activeTab === 'messages'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Inbox className="w-4 h-4" />
-          <span>Contact Messages</span>
-          {unreadCount > 0 ? (
-            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-600 text-white shadow-xs">
-              {unreadCount}
-            </span>
-          ) : (
-            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-              {messages.length}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Feedback Toast / Alert Banner */}
-      {feedback && (
-        <div
-          role="status"
-          className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-2.5 animate-in fade-in ${
-            feedback.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-red-50 border-red-200 text-red-700'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {feedback.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-            )}
-            <span className="font-medium">{feedback.message}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-            aria-label="Dismiss message"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Database Connection Notice */}
-      {data && (
-        data.databaseStatus === 'query_failed' ? (
-          <div className="p-4 rounded-xl border border-red-300 bg-red-50 text-red-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-              <span>
-                <strong>Storage Sync Issue:</strong> Google Drive connection encountered an issue: {data.databaseError || 'Connection timed out'}.
-              </span>
-            </div>
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+      {/* 1. TOP NAVBAR */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          {/* Left: Mobile Menu Trigger + Logo */}
+          <div className="flex items-center gap-3">
             <button
-              type="button"
-              onClick={() => fetchStats(true)}
-              className="px-2.5 py-1 rounded-md bg-red-100 hover:bg-red-200 text-red-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit cursor-pointer transition"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
+              aria-label="Toggle navigation menu"
             >
-              Retry Connection
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-          </div>
-        ) : data.isDatabaseConnected ? (
-          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/80 text-emerald-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>
-                <strong>Gmail Persistent Storage Active:</strong> All visitor analytics, member accounts, contact messages, and activity events are stored in Gmail API messages in <code>{data.targetAccount || 'sameerrout2006@gmail.com'}</code> under labels <code>ToolForForever/*</code>.
-                {data.totalVisits === 0 && ' (Gmail storage is newly initialized and ready to record events).'}
-              </span>
-            </div>
-            <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 font-semibold text-2xs uppercase tracking-wider shrink-0 w-fit">
-              Gmail Storage Active
-            </span>
-          </div>
-        ) : (
-          <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>
-                <strong>Gmail Storage Awaiting Configuration:</strong> Production persistence requires Gmail API credentials for <code>sameerrout2006@gmail.com</code> (Labels: <code>ToolForForever/*</code>). Configure <code>GMAIL_STORAGE_CLIENT_ID</code>, <code>GMAIL_STORAGE_CLIENT_SECRET</code>, and <code>GMAIL_STORAGE_REFRESH_TOKEN</code> in Vercel to activate cloud persistence.
-              </span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <a
-                href="/api/admin/gmail-oauth/connect"
-                target="_blank"
-                rel="noreferrer"
-                className="px-2.5 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold text-2xs uppercase tracking-wider transition"
-              >
-                Connect Gmail
-              </a>
-              <span className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-800 font-semibold text-2xs uppercase tracking-wider w-fit">
-                Awaiting Gmail
-              </span>
-            </div>
-          </div>
-        )
-      )}
 
-      {/* ========================================================================= */}
-      {/* TAB 1: WEBSITE VISITOR ANALYTICS */}
-      {/* ========================================================================= */}
-      {activeTab === 'analytics' && (
-        <div className="space-y-8 animate-in fade-in">
-          {/* 4 Core KPI Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* 1. Total Visits */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Total Visits
-                  </span>
-                  {data.isDatabaseConnected ? (
-                    <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      Gmail Storage
-                    </span>
-                  ) : (
-                    <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting Gmail
-                    </span>
-                  )}
-                </div>
-                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                  <Globe className="w-5 h-5" />
-                </div>
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                <Shield className="w-5 h-5" />
               </div>
-              <div className="mt-4">
-                <div className="text-3xl font-extrabold text-slate-900">{data.totalVisits}</div>
-                <p className="mt-1 text-xs text-slate-500">Recorded page visits since tracking enabled</p>
-              </div>
-            </div>
-
-            {/* 2. Unique Visitors */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Unique Visitors
-                  </span>
-                  {data.isDatabaseConnected ? (
-                    <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      Gmail Storage
-                    </span>
-                  ) : (
-                    <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting Gmail
-                    </span>
-                  )}
-                </div>
-                <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
-                  <Users className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="text-3xl font-extrabold text-slate-900">{data.uniqueVisitors}</div>
-                <p className="mt-1 text-xs text-slate-500">Distinct visitors (first-party ID & keyed IP HMAC)</p>
-              </div>
-            </div>
-
-            {/* 3. Today's Visitors */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Today&apos;s Visitors
-                  </span>
-                  {data.isDatabaseConnected ? (
-                    <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      Gmail Storage
-                    </span>
-                  ) : (
-                    <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting Gmail
-                    </span>
-                  )}
-                </div>
-                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                  <Calendar className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="text-3xl font-extrabold text-slate-900">{data.todayVisitors}</div>
-                <p className="mt-1 text-xs text-slate-500">Unique visitors recorded today (Asia/Kolkata IST)</p>
-              </div>
-            </div>
-
-            {/* 4. Registered Members */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Registered Members
-                  </span>
-                  {data.isDatabaseConnected ? (
-                    <span className="text-3xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                      Gmail Storage
-                    </span>
-                  ) : (
-                    <span className="text-3xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Awaiting Gmail
-                    </span>
-                  )}
-                </div>
-                <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="text-3xl font-extrabold text-slate-900">{data.registeredMembers}</div>
-                <p className="mt-1 text-xs text-slate-500">Actual registered accounts in database</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Visitor History Table Section */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            {/* Header with Title and Search/Filters */}
-            <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-blue-600" />
-                  <span>Website Visitor History</span>
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Real-time server log of page visits with privacy-preserving visitor identifiers and referrer metadata.
-                </p>
-              </div>
-
-              {/* Filter controls */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                {/* Search path */}
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Filter page path or ID..."
-                    value={pathSearch}
-                    onChange={(e) => setPathSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Date range buttons */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-                  {(
-                    [
-                      { key: 'all', label: 'All Time' },
-                      { key: 'today', label: 'Today' },
-                      { key: '7days', label: '7 Days' },
-                      { key: '30days', label: '30 Days' },
-                    ] as const
-                  ).map((opt) => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => setDateFilter(opt.key)}
-                      className={`px-2.5 py-1 text-2xs font-semibold rounded-lg transition cursor-pointer ${
-                        dateFilter === opt.key
-                          ? 'bg-white text-blue-600 shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Visits Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-3.5">Visit Date & Time</th>
-                    <th className="px-6 py-3.5">Visitor Identifier</th>
-                    <th className="px-6 py-3.5">Page Visited</th>
-                    <th className="px-6 py-3.5">Referrer</th>
-                    <th className="px-6 py-3.5 text-right">Visitor Sessions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {paginatedVisits.map((visit) => (
-                    <tr key={visit.id} className="hover:bg-slate-50/70 transition">
-                      <td className="px-6 py-3.5 whitespace-nowrap text-slate-900 font-medium">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>
-                            {new Date(visit.timestamp).toLocaleDateString('en-US', {
-                              timeZone: 'Asia/Kolkata',
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}{' '}
-                            <span className="text-slate-400 text-2xs">
-                              {new Date(visit.timestamp).toLocaleTimeString([], {
-                                timeZone: 'Asia/Kolkata',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit',
-                              })}{' '}
-                              IST
-                            </span>
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3.5 font-mono text-2xs">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                          {visit.maskedIp}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3.5 font-semibold text-slate-900">
-                        <Link
-                          href={visit.path}
-                          className="hover:text-blue-600 transition inline-flex items-center gap-1"
-                        >
-                          <span>{visit.path}</span>
-                          <ExternalLink className="w-3 h-3 text-slate-400" />
-                        </Link>
-                      </td>
-                      <td className="px-6 py-3.5 text-slate-500">
-                        {visit.referrer ? (
-                          <span className="truncate max-w-[200px] block font-mono text-2xs text-slate-600" title={visit.referrer}>
-                            {visit.referrer}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic text-2xs">Direct / None</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-3.5 text-right">
-                        <span className="inline-block px-2 py-0.5 rounded-full text-2xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                          {visit.visitCount} {visit.visitCount === 1 ? 'visit' : 'visits'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {/* Empty state */}
-                  {filteredVisits.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                        <Globe className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                        <p className="font-semibold text-slate-700">No visitor records found.</p>
-                        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                          {pathSearch.trim() || dateFilter !== 'all'
-                            ? 'No recorded visits match the current path or date filter. Try clearing the filters.'
-                            : 'Visitor activity is tracked automatically as users browse the website.'}
-                        </p>
-                        {(pathSearch.trim() || dateFilter !== 'all') && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPathSearch('');
-                              setDateFilter('all');
-                            }}
-                            className="mt-3 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
-                          >
-                            Clear Filters
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Controls */}
-            {filteredVisits.length > pageSize && (
-              <div className="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <div>
-                  Showing <span className="font-semibold text-slate-900">{(currentPage - 1) * pageSize + 1}</span> to{' '}
-                  <span className="font-semibold text-slate-900">
-                    {Math.min(currentPage * pageSize, filteredVisits.length)}
-                  </span>{' '}
-                  of <span className="font-semibold text-slate-900">{filteredVisits.length}</span> visits
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
-                    aria-label="Previous page"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="px-2 font-medium">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
-                    aria-label="Next page"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Two Column Layout: Registered Members & Recent Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Registered Members List */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">Registered Members ({data.registeredMembers})</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Verified registered accounts stored in the server database.
-                  </p>
-                </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                  {data.registeredMembers} Total
+              <div className="flex flex-col">
+                <span className="font-bold text-base tracking-tight text-slate-900 leading-none">
+                  ToolForForever
+                </span>
+                <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider mt-0.5">
+                  Manager Dashboard
                 </span>
               </div>
+            </Link>
+          </div>
 
-              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {data.users.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center">
-                    No registered members recorded in database.
-                  </p>
-                ) : (
-                  data.users.map((member) => (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="font-semibold text-xs text-slate-900 truncate">{member.name}</div>
-                        <div className="text-2xs text-slate-500 truncate font-mono">{member.email}</div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-right text-2xs text-slate-400">
-                          <div>Joined {new Date(member.createdAt).toLocaleDateString()}</div>
-                          <div>Last login: {new Date(member.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                        </div>
-                        {member.isManager ? (
-                          <span className="px-2 py-0.5 rounded text-3xs font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
-                            Manager
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setMemberToDelete(member)}
-                            title={`Delete member ${member.name || member.email}`}
-                            aria-label={`Delete member ${member.name || member.email}`}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+          {/* Center/Right Controls */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Date Filter selector (relevant for overview, tools, pageviews, logins) */}
+            <div className="relative">
+              <select
+                value={dateFilter}
+                onChange={(e) => {
+                  const val = e.target.value as DateFilterOption;
+                  setDateFilter(val);
+                  if (val === 'custom') {
+                    setShowCustomDateModal(true);
+                  }
+                }}
+                className="text-xs sm:text-sm font-medium bg-slate-100 hover:bg-slate-200/80 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="today">Today (IST)</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="7days">Last 7 Days</option>
+                <option value="30days">Last 30 Days</option>
+                <option value="this_month">This Month</option>
+                <option value="all">All Time</option>
+                <option value="custom">Custom Range...</option>
+              </select>
             </div>
 
-            {/* Recent Activity Stream */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6">
-              <h2 className="text-base font-bold text-slate-900">Recent Platform Activity</h2>
-              <p className="text-xs text-slate-500 mt-0.5 mb-4">
-                Real event stream of user signups, logins, and member actions.
-              </p>
+            {/* Auto-refresh toggle */}
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              title={autoRefresh ? 'Auto-refresh active (15s)' : 'Auto-refresh paused'}
+              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition ${
+                autoRefresh
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  autoRefresh ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                }`}
+              />
+              <span>{autoRefresh ? '15s Live' : 'Paused'}</span>
+            </button>
 
-              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {data.recentEvents.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center">
-                    No recent activity recorded yet.
-                  </p>
-                ) : (
-                  data.recentEvents.map((evt, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50 text-xs"
-                    >
-                      <div className={`mt-0.5 shrink-0 ${evt.type === 'member_delete' ? 'text-red-500' : 'text-slate-400'}`}>
-                        {evt.type === 'member_delete' ? (
-                          <Trash2 className="w-3.5 h-3.5" />
-                        ) : (
-                          <Clock className="w-3.5 h-3.5" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={`font-semibold capitalize ${evt.type === 'member_delete' ? 'text-red-700 font-bold' : 'text-slate-800'}`}>
-                            {evt.type === 'tool_use'
-                              ? `Tool: ${evt.toolSlug}`
-                              : evt.type === 'signup'
-                              ? 'New Member Signup'
-                              : evt.type === 'member_delete'
-                              ? 'Member Deleted'
-                              : 'Member Login'}
-                          </span>
-                          <span className="text-2xs text-slate-400 shrink-0">
-                            {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        {evt.email && (
-                          <div className="text-2xs text-slate-500 mt-0.5 truncate">{evt.email}</div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            {/* Manual Refresh Button */}
+            <button
+              onClick={() => fetchDashboardData(true)}
+              disabled={refreshing}
+              title="Refresh dashboard data immediately"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-medium transition shadow-sm disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+
+            {/* Back to public site */}
+            <Link
+              href="/"
+              className="hidden md:inline-flex items-center gap-1 px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition"
+            >
+              <span>Site</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
-      )}
+      </header>
 
-      {/* ========================================================================= */}
-      {/* TAB 2: CONTACT MESSAGES */}
-      {/* ========================================================================= */}
-      {activeTab === 'messages' && (
-        <div className="space-y-6 animate-in fade-in">
-          {/* Header & Filter Controls */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
-                  <span>Contact Messages ({messages.length})</span>
-                </h2>
-                <p className="text-xs text-slate-500 mt-1">
-                  {messages.length} Total Messages · {unreadCount} Unread
-                </p>
+      {/* 2. MAIN LAYOUT: SIDEBAR + CONTENT */}
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6">
+        {/* DESKTOP SIDEBAR */}
+        <aside className="hidden lg:block w-64 shrink-0 space-y-4">
+          {/* Manager Account Card */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                M
               </div>
-
-              {/* Search input */}
-              <div className="relative max-w-xs w-full">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search name, email, message..."
-                  value={messageSearch}
-                  onChange={(e) => setMessageSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-slate-900 truncate">
+                  {data?.authenticatedAs || 'Authorized Manager'}
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Verified Session
+                </div>
               </div>
             </div>
+            {lastRefreshedAt && (
+              <div className="text-[11px] text-slate-500 flex items-center gap-1 pt-1 border-t border-slate-100">
+                <Clock className="w-3 h-3 text-slate-400" />
+                Updated at {lastRefreshedAt}
+              </div>
+            )}
+          </div>
 
-            {/* Status Filter Badges */}
-            <div className="flex flex-wrap items-center gap-2 pt-4">
-              <span className="text-xs font-medium text-slate-500 mr-1">Filter:</span>
-              {(['all', 'unread', 'read', 'replied', 'resolved'] as const).map((statusKey) => {
-                const count =
-                  statusKey === 'all'
-                    ? messages.length
-                    : messages.filter((m) => m.status === statusKey).length;
-                const active = messageFilter === statusKey;
-                return (
-                  <button
-                    key={statusKey}
-                    type="button"
-                    onClick={() => setMessageFilter(statusKey)}
-                    className={`px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                      active
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    <span className="capitalize">{statusKey}</span>
+          {/* Navigation Items */}
+          <nav className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm space-y-1">
+            {navTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-700 font-semibold shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon
+                      className={`w-4 h-4 ${
+                        isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'
+                      }`}
+                    />
+                    <span>{tab.label}</span>
+                  </div>
+                  {tab.badge !== undefined && (
                     <span
-                      className={`text-2xs px-1.5 py-0.2 rounded-full font-bold ${
-                        active ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        tab.badgeVariant === 'emerald'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : tab.badgeVariant === 'amber'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-slate-100 text-slate-700'
                       }`}
                     >
-                      {count}
+                      {tab.badge}
                     </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Messages Table */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-3.5">Name</th>
-                    <th className="px-6 py-3.5">Email</th>
-                    <th className="px-6 py-3.5">Topic</th>
-                    <th className="px-6 py-3.5">Status</th>
-                    <th className="px-6 py-3.5">Date</th>
-                    <th className="px-6 py-3.5 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {filteredMessages.map((msg) => {
-                    const isUnread = msg.status === 'unread';
-                    return (
-                      <tr
-                        key={msg.id}
-                        className={`hover:bg-slate-50/80 transition ${
-                          isUnread ? 'bg-blue-50/30 font-medium' : ''
-                        }`}
-                      >
-                        <td className="px-6 py-4 font-semibold text-slate-900">
-                          <div className="flex items-center gap-2">
-                            {isUnread && (
-                              <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" title="Unread" />
-                            )}
-                            <span className="truncate max-w-[150px]">{msg.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 font-mono text-slate-600">
-                          <span className="truncate max-w-[180px] block">{msg.email}</span>
-                        </td>
-                        <td className="px-6 py-4 text-slate-700">
-                          <span className="inline-block px-2 py-0.5 rounded-full text-2xs font-medium bg-slate-100 text-slate-700">
-                            {msg.category}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-2xs font-semibold capitalize ${
-                              msg.status === 'unread'
-                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                : msg.status === 'read'
-                                ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                                : msg.status === 'replied'
-                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            }`}
-                          >
-                            {msg.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-slate-500 whitespace-nowrap">
-                          {new Date(msg.createdAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </td>
-                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleViewMessage(msg)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>View</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setMessageToDelete(msg)}
-                              title="Delete message"
-                              aria-label="Delete message"
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {filteredMessages.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
-                        <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                        <p className="font-medium text-slate-700">No contact messages found.</p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          {messages.length === 0
-                            ? 'Submitted messages from the Contact Us form will appear here.'
-                            : 'No messages match the current search or status filter.'}
-                        </p>
-                      </td>
-                    </tr>
                   )}
-                </tbody>
-              </table>
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* MOBILE DRAWER NAVIGATION */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm flex">
+            <div className="w-4/5 max-w-xs bg-white h-full p-4 space-y-4 shadow-xl flex flex-col">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-blue-600" />
+                  <span className="font-bold text-sm text-slate-900">Manager Menu</span>
+                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1 text-slate-500 hover:text-slate-800 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 font-mono truncate">
+                {data?.authenticatedAs || 'Authorized Manager'}
+              </div>
+
+              <nav className="space-y-1 flex-1 overflow-y-auto">
+                {navTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700 font-semibold'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4 text-slate-500" />
+                        <span>{tab.label}</span>
+                      </div>
+                      {tab.badge !== undefined && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">
+                          {tab.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <div className="pt-2 border-t border-slate-200">
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-blue-600 py-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Return to Public Website</span>
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ========================================================================= */}
-      {/* VIEW MESSAGE MODAL */}
-      {/* ========================================================================= */}
-      {selectedMessage && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="view-message-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
-        >
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl max-w-xl w-full p-6 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 id="view-message-title" className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-blue-600" />
-                  <span>Contact Message</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Submitted {new Date(selectedMessage.createdAt).toLocaleString('en-US', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })}
-                </p>
+        {/* CONTENT AREA */}
+        <main className="flex-1 min-w-0 space-y-6">
+          {/* Error Banner */}
+          {error && (
+            <div className="p-4 rounded-2xl bg-red-50 border border-red-200 flex items-start justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-2.5 text-red-800 text-sm">
+                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-semibold">Unable to refresh statistics</div>
+                  <div className="text-xs text-red-700 mt-0.5 leading-relaxed">{error}</div>
+                </div>
               </div>
               <button
-                type="button"
-                onClick={() => setSelectedMessage(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer transition"
-                aria-label="Close message"
+                onClick={() => fetchDashboardData(true)}
+                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium shrink-0 transition"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Skeleton state during first load */}
+          {loading && !data ? (
+            <div className="space-y-6 animate-pulse">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="h-28 rounded-2xl bg-slate-200/70" />
+                ))}
+              </div>
+              <div className="h-72 rounded-2xl bg-slate-200/70" />
+              <div className="h-96 rounded-2xl bg-slate-200/70" />
+            </div>
+          ) : data ? (
+            <div>
+              {activeTab === 'overview' && (
+                <OverviewSection
+                  overview={data.overview}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                  onOpenUserModal={(uid) => setSelectedUserId(uid)}
+                />
+              )}
+
+              {activeTab === 'visitors' && (
+                <LiveVisitorsSection
+                  liveVisitors={data.liveVisitors}
+                  onOpenUserModal={(uid) => setSelectedUserId(uid)}
+                />
+              )}
+
+              {activeTab === 'users' && (
+                <RegisteredUsersSection
+                  users={data.registeredUsers.users}
+                  totalCount={data.registeredUsers.totalCount}
+                  onOpenUserModal={(uid) => setSelectedUserId(uid)}
+                />
+              )}
+
+              {activeTab === 'logins' && (
+                <LoginHistorySection
+                  loginHistory={data.loginHistory}
+                  onOpenUserModal={(uid) => setSelectedUserId(uid)}
+                />
+              )}
+
+              {activeTab === 'tools' && (
+                <ToolUsageSection
+                  toolUsage={data.toolUsage}
+                  onOpenUserModal={(uid) => setSelectedUserId(uid)}
+                />
+              )}
+
+              {activeTab === 'pageviews' && (
+                <PageViewsSection pageViews={data.pageViews} />
+              )}
+
+              {activeTab === 'messages' && (
+                <ContactMessagesSection
+                  messages={data.contactMessages.messages}
+                  onRefresh={() => fetchDashboardData(true)}
+                />
+              )}
+
+              {activeTab === 'system' && (
+                <SystemStatusSection systemStatus={data.systemStatus} />
+              )}
+            </div>
+          ) : null}
+        </main>
+      </div>
+
+      {/* 3. USER ACTIVITY MODAL */}
+      {selectedUserId && (
+        <UserActivityModal
+          userId={selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+        />
+      )}
+
+      {/* 4. CUSTOM DATE RANGE MODAL */}
+      {showCustomDateModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                Select Custom Date Range
+              </h3>
+              <button
+                onClick={() => setShowCustomDateModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Metadata Information Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <div className="space-y-3">
               <div>
-                <span className="text-slate-400 block text-2xs uppercase tracking-wider font-semibold">
-                  Sender Name
-                </span>
-                <span className="font-bold text-slate-900 text-sm mt-0.5 block">
-                  {selectedMessage.name}
-                </span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
               </div>
+
               <div>
-                <span className="text-slate-400 block text-2xs uppercase tracking-wider font-semibold">
-                  Email Address
-                </span>
-                <a
-                  href={`mailto:${selectedMessage.email}`}
-                  className="font-mono text-blue-600 hover:underline mt-0.5 block truncate"
-                >
-                  {selectedMessage.email}
-                </a>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-2xs uppercase tracking-wider font-semibold">
-                  Topic / Category
-                </span>
-                <span className="font-semibold text-slate-800 mt-0.5 block">
-                  {selectedMessage.category}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-2xs uppercase tracking-wider font-semibold">
-                  Current Status
-                </span>
-                <span
-                  className={`inline-block px-2.5 py-0.5 rounded-full text-2xs font-bold capitalize mt-0.5 ${
-                    selectedMessage.status === 'unread'
-                      ? 'bg-blue-100 text-blue-800'
-                      : selectedMessage.status === 'read'
-                      ? 'bg-slate-200 text-slate-800'
-                      : selectedMessage.status === 'replied'
-                      ? 'bg-purple-100 text-purple-800'
-                      : 'bg-emerald-100 text-emerald-800'
-                  }`}
-                >
-                  {selectedMessage.status}
-                </span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
               </div>
             </div>
 
-            {/* Message Body */}
-            <div>
-              <span className="text-xs font-semibold text-slate-700 block mb-2">Message:</span>
-              <div className="bg-slate-50/80 rounded-xl border border-slate-200/80 p-4 text-xs text-slate-800 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto font-sans">
-                {selectedMessage.message}
-              </div>
-            </div>
-
-            {/* Actions Bar */}
-            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex justify-end gap-2 pt-2">
               <button
-                type="button"
+                onClick={() => setShowCustomDateModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
                 onClick={() => {
-                  setMessageToDelete(selectedMessage);
+                  setShowCustomDateModal(false);
+                  fetchDashboardData(true);
                 }}
-                className="w-full sm:w-auto px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                disabled={!customStart || !customEnd}
+                className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition disabled:opacity-50"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete</span>
-              </button>
-
-              <div className="w-full sm:w-auto flex flex-wrap items-center justify-end gap-2">
-                {selectedMessage.status !== 'read' && (
-                  <button
-                    type="button"
-                    disabled={updatingMessageStatus}
-                    onClick={() => handleUpdateStatus(selectedMessage.id, 'read')}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
-                  >
-                    Mark as Read
-                  </button>
-                )}
-
-                {selectedMessage.status !== 'replied' && (
-                  <button
-                    type="button"
-                    disabled={updatingMessageStatus}
-                    onClick={() => handleUpdateStatus(selectedMessage.id, 'replied')}
-                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs disabled:opacity-50"
-                  >
-                    Mark as Replied
-                  </button>
-                )}
-
-                {selectedMessage.status !== 'resolved' && (
-                  <button
-                    type="button"
-                    disabled={updatingMessageStatus}
-                    onClick={() => handleUpdateStatus(selectedMessage.id, 'resolved')}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Mark as Resolved</span>
-                  </button>
-                )}
-
-                {selectedMessage.status !== 'unread' && (
-                  <button
-                    type="button"
-                    disabled={updatingMessageStatus}
-                    onClick={() => handleUpdateStatus(selectedMessage.id, 'unread')}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
-                  >
-                    Mark as Unread
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* DELETE MESSAGE CONFIRMATION MODAL */}
-      {/* ========================================================================= */}
-      {messageToDelete && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-msg-dialog-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
-        >
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95">
-            <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 id="delete-msg-dialog-title" className="text-base font-bold text-slate-900">
-                  Delete this message permanently?
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Are you sure you want to permanently remove this message?
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl border border-slate-200/80 p-3.5 text-xs space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">From:</span>
-                <span className="font-semibold text-slate-900">{messageToDelete.name}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Email:</span>
-                <span className="font-semibold text-slate-900 font-mono text-2xs">
-                  {messageToDelete.email}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Topic:</span>
-                <span className="text-slate-700">{messageToDelete.category}</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-500">
-              This action cannot be undone. The message will be permanently deleted from the database storage.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                disabled={deletingMessage}
-                onClick={() => setMessageToDelete(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deletingMessage}
-                onClick={confirmDeleteMessage}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
-              >
-                {deletingMessage && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>{deletingMessage ? 'Deleting...' : 'Delete'}</span>
+                Apply Range
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* ========================================================================= */}
-      {/* DELETE MEMBER MODAL */}
-      {/* ========================================================================= */}
-      {memberToDelete && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-dialog-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
-        >
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95">
-            <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 id="delete-dialog-title" className="text-base font-bold text-slate-900">
-                  Delete Member
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Are you sure you want to delete this member?
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl border border-slate-200/80 p-3.5 text-xs space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Name:</span>
-                <span className="font-semibold text-slate-900">{memberToDelete.name}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Email:</span>
-                <span className="font-semibold text-slate-900 font-mono text-2xs sm:text-xs">
-                  {memberToDelete.email}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-2xs sm:text-xs text-slate-500">
-              This action cannot be undone. The member&apos;s account will be permanently deleted from the database and they will no longer be able to log in.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={() => setMemberToDelete(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={confirmDeleteMember}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
-              >
-                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>{deleting ? 'Deleting...' : 'Delete'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </Container>
+    </div>
   );
 }

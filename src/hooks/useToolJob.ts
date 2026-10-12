@@ -15,6 +15,7 @@ import { AppError } from '@/lib/errors';
 import { detectDeviceProfile, type DeviceProfile } from '@/lib/device';
 import { resolveLimits, type ToolLimitSpec } from '@/lib/limits';
 import type { ToolSlug } from '@/lib/tools';
+import { trackToolExecutionClient } from '@/hooks/useTrackToolUsage';
 
 export interface ToolJobState {
   /** True while work is running: disables the form and shows the progress bar. */
@@ -61,7 +62,7 @@ export interface UseToolJobResult extends ToolJobState {
  * `reporter.throwIfCancelled()`, and workers are torn down by `workerClient`
  * when the signal fires.
  */
-export function useToolJob(): UseToolJobResult {
+export function useToolJob(toolSlug?: string): UseToolJobResult {
   const [state, setState] = useState<ToolJobState>(IDLE);
   const reporterRef = useRef<JobReporter | null>(null);
 
@@ -76,6 +77,11 @@ export function useToolJob(): UseToolJobResult {
 
   const run = useCallback<ToolJobResultRunner>(async (work) => {
     reporterRef.current?.dispose();
+
+    const startTime = Date.now();
+    if (toolSlug) {
+      trackToolExecutionClient({ toolSlug, status: 'initiated' });
+    }
 
     const reporter = new JobReporter({
       onUpdate: (next) => {
@@ -98,6 +104,15 @@ export function useToolJob(): UseToolJobResult {
       const result = await work(reporter);
       reporter.succeed();
       setState({ ...IDLE, progress: 1, status: 'Done' });
+
+      if (toolSlug) {
+        trackToolExecutionClient({
+          toolSlug,
+          status: 'completed',
+          durationMs: Date.now() - startTime,
+        });
+      }
+
       return result;
     } catch (error) {
       const appError = AppError.from(error);
@@ -105,13 +120,21 @@ export function useToolJob(): UseToolJobResult {
         setState({ ...IDLE, cancelled: true, status: 'Cancelled' });
       } else {
         setState({ ...IDLE, error: appError, status: appError.message });
+        if (toolSlug) {
+          trackToolExecutionClient({
+            toolSlug,
+            status: 'failed',
+            durationMs: Date.now() - startTime,
+            errorMessage: appError.message,
+          });
+        }
       }
       return undefined;
     } finally {
       reporter.dispose();
       if (reporterRef.current === reporter) reporterRef.current = null;
     }
-  }, []);
+  }, [toolSlug]);
 
   const cancel = useCallback(() => {
     reporterRef.current?.cancel();

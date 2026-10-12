@@ -29,7 +29,7 @@ import type { ExtractEntry } from '@/lib/zip/zipCore';
 export function ExtractZipTool() {
   const profile = useDeviceProfile();
   const limits = useMemo(() => resolveLimits('extract-zip', profile), [profile]);
-  const { run, cancel, running, progress, status, error, cancelled } = useToolJob();
+  const { run, cancel, running, progress, status, error, cancelled } = useToolJob('extract-zip');
   const urls = useObjectUrls();
 
   const [archiveName, setArchiveName] = useState<string | null>(null);

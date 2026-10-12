@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { registerEmailUser } from '@/lib/db';
+import { registerEmailUser, recordLoginEvent, recordVisitorSessionHeartbeat } from '@/lib/db';
 import { createSessionToken, isManagerEmail, SESSION_COOKIE_NAME } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -32,6 +32,28 @@ export async function POST(request: NextRequest) {
     }
 
     const user = result.user;
+    const visitorSessionId = request.cookies.get('tff_vid')?.value;
+
+    recordLoginEvent({
+      userId: user.id,
+      email: user.email,
+      method: 'email',
+      eventType: 'signup',
+      status: 'success',
+      sessionId: visitorSessionId,
+    });
+
+    if (visitorSessionId) {
+      recordVisitorSessionHeartbeat({
+        sessionId: visitorSessionId,
+        visitorHash: 'auth_session',
+        maskedIp: '127.0.0.***',
+        currentPath: '/signup',
+        userId: user.id,
+        userEmail: user.email,
+      });
+    }
+
     const isManager = isManagerEmail(user.email);
     const token = createSessionToken({
       id: user.id,

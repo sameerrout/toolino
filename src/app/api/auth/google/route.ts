@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { recordUserLogin } from '@/lib/db';
+import { recordUserLogin, recordLoginEvent, recordVisitorSessionHeartbeat } from '@/lib/db';
 import { createSessionToken, isManagerEmail, SESSION_COOKIE_NAME } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -12,10 +12,20 @@ export async function POST(request: NextRequest) {
     let picture: string | undefined = undefined;
     let googleSub = '';
 
+    const visitorSessionId = request.cookies.get('tff_vid')?.value;
+
     // 1. If Google ID Token is provided:
     if (credential) {
       const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
       if (!googleRes.ok) {
+        recordLoginEvent({
+          email: 'unknown@google.com',
+          method: 'google',
+          eventType: 'failed_login',
+          status: 'failure',
+          failureReason: 'invalid_token',
+          sessionId: visitorSessionId,
+        });
         return NextResponse.json(
           { error: 'Google authentication failed. Invalid token.' },
           { status: 401 }
@@ -25,6 +35,14 @@ export async function POST(request: NextRequest) {
       
       const expectedClientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
       if (expectedClientId && tokenInfo.aud !== expectedClientId) {
+        recordLoginEvent({
+          email: tokenInfo.email || 'unknown@google.com',
+          method: 'google',
+          eventType: 'failed_login',
+          status: 'failure',
+          failureReason: 'audience_mismatch',
+          sessionId: visitorSessionId,
+        });
         return NextResponse.json(
           { error: 'Google token audience mismatch.' },
           { status: 401 }
@@ -61,6 +79,26 @@ export async function POST(request: NextRequest) {
       name,
       picture,
     });
+
+    recordLoginEvent({
+      userId: user.id,
+      email: user.email,
+      method: 'google',
+      eventType: isNewUser ? 'signup' : 'login',
+      status: 'success',
+      sessionId: visitorSessionId,
+    });
+
+    if (visitorSessionId) {
+      recordVisitorSessionHeartbeat({
+        sessionId: visitorSessionId,
+        visitorHash: 'auth_session',
+        maskedIp: '127.0.0.***',
+        currentPath: '/signin',
+        userId: user.id,
+        userEmail: user.email,
+      });
+    }
 
     const isManager = isManagerEmail(user.email);
     const token = createSessionToken({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateEmailUser } from '@/lib/db';
+import { authenticateEmailUser, recordLoginEvent, recordVisitorSessionHeartbeat } from '@/lib/db';
 import { createSessionToken, isManagerEmail, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { extractClientIp, hashVisitorIp, getMaskedIpIdentifier } from '@/lib/analytics/visitor';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,8 +21,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const clientIp = extractClientIp(request.headers);
+    const visitorHash = hashVisitorIp(clientIp);
+    const maskedIp = getMaskedIpIdentifier(clientIp, visitorHash);
+    const visitorSessionId = request.cookies.get('tff_vid')?.value;
+
     const result = authenticateEmailUser(email, password);
     if (result.error || !result.user) {
+      recordLoginEvent({
+        email,
+        method: 'email',
+        eventType: 'failed_login',
+        status: 'failure',
+        failureReason: 'invalid_credentials',
+        sessionId: visitorSessionId,
+        maskedIp,
+      });
       return NextResponse.json(
         { error: result.error || 'Invalid email or password.' },
         { status: 401 }
@@ -29,6 +44,26 @@ export async function POST(request: NextRequest) {
     }
 
     const user = result.user;
+    recordLoginEvent({
+      userId: user.id,
+      email: user.email,
+      method: 'email',
+      eventType: 'login',
+      status: 'success',
+      sessionId: visitorSessionId,
+    });
+
+    if (visitorSessionId) {
+      recordVisitorSessionHeartbeat({
+        sessionId: visitorSessionId,
+        visitorHash: 'auth_session',
+        maskedIp: '127.0.0.***',
+        currentPath: '/signin',
+        userId: user.id,
+        userEmail: user.email,
+      });
+    }
+
     const isManager = isManagerEmail(user.email);
     const token = createSessionToken({
       id: user.id,

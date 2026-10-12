@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { recordToolUsage } from '@/lib/db';
+import { recordToolUsage, recordToolExecutionAsync, resolveToolDisplayName } from '@/lib/db';
 import { getServerSession } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -11,8 +11,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Valid toolSlug is required' }, { status: 400 });
     }
 
-    const session = await getServerSession();
+    const session = await getServerSession(request);
+    const visitorSessionId = request.cookies.get('tff_vid')?.value;
+
     recordToolUsage(toolSlug, session?.email);
+
+    await recordToolExecutionAsync({
+      toolSlug,
+      toolName: resolveToolDisplayName(toolSlug),
+      userId: session?.id,
+      visitorSessionId,
+      status: 'initiated',
+    }).catch(() => {});
 
     return NextResponse.json({ ok: true });
   } catch (_error) {
