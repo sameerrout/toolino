@@ -1,21 +1,29 @@
-import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { requireManagerSession } from '@/lib/auth';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getSession } from '@/lib/auth';
 import { ManagerDashboard } from '@/components/manager/ManagerDashboard';
 
-export const metadata: Metadata = {
-  title: 'Manager Dashboard - ToolForForever',
-  description: 'Authorized management and statistics dashboard for ToolForForever.',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+export default function ManagerPage() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
-export default async function ManagerPage() {
-  const session = await requireManagerSession();
-  if (!session) {
-    redirect('/signin/?redirect=/manager/');
+  useEffect(() => {
+    const session = getSession();
+    if (!session || session.role !== 'manager') {
+      router.replace('/login/?redirect=/manager/');
+    } else {
+      setAuthorized(true);
+    }
+  }, [router]);
+
+  if (!authorized) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center text-slate-500 text-sm">
+        Verifying manager privileges...
+      </div>
+    );
   }
 
   return <ManagerDashboard />;

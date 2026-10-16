@@ -46,3 +46,6 @@ pnpm-debug.log*
 # deploy artefacts
 /deploy-local/
 *.zip
+
+# generated redirects
+/public/_redirects.json

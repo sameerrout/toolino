@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/layout/Logo';
 import { ShieldCheck, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import { registerClientUser, loginClientUser } from '@/lib/auth';
 
 interface AuthCardProps {
   mode: 'signin' | 'login';
@@ -48,25 +49,16 @@ export function GoogleAuthCard({ mode }: AuthCardProps) {
     setLoading(true);
 
     try {
-      const endpoint = isSignIn ? '/api/auth/register/' : '/api/auth/login/';
-      const body = isSignIn
-        ? { email, password, confirmPassword }
-        : { email, password };
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
+      const res = isSignIn
+        ? await registerClientUser({ name: email.split('@')[0], email, password })
+        : await loginClientUser(email, password);
 
       if (!res.ok) {
-        throw new Error(data.error || 'Authentication failed. Please check your credentials.');
+        throw new Error(res.error || 'Authentication failed. Please check your credentials.');
       }
 
       // Redirect appropriately based on role
-      if (data.user?.isManager) {
+      if (res.user?.role === 'manager') {
         router.push('/manager/');
       } else {
         router.push('/');
@@ -183,7 +175,7 @@ export function GoogleAuthCard({ mode }: AuthCardProps) {
             ) : (
               <p>
                 Don&apos;t have an account?{' '}
-                <Link href="/signin/" className="font-semibold text-blue-600 hover:underline">
+                <Link href="/login/" className="font-semibold text-blue-600 hover:underline">
                   Sign In
                 </Link>
               </p>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { writeDb } from '@/lib/db';
 
 // Module-level tracking map to survive React 19 Strict Mode double-invocation & rapid navigation
 const recentClientTrackMap = new Map<string, number>();
@@ -10,13 +11,25 @@ function isExcludedPath(path: string): boolean {
   const lower = path.toLowerCase();
   return (
     lower.startsWith('/manager') ||
-    lower.startsWith('/admin') ||
-    lower.startsWith('/api/') ||
-    lower.startsWith('/signin') ||
+    lower.startsWith('/login') ||
     lower.startsWith('/signup') ||
     lower.startsWith('/forgot-password') ||
     lower.startsWith('/reset-password')
   );
+}
+
+function getOrCreateVisitorId(): string {
+  if (typeof window === 'undefined') return 'server';
+  try {
+    let vid = window.localStorage.getItem('toolino_vid');
+    if (!vid) {
+      vid = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `vid_${Date.now()}`;
+      window.localStorage.setItem('toolino_vid', vid);
+    }
+    return vid;
+  } catch {
+    return 'anonymous';
+  }
 }
 
 export function VisitorTracker() {
@@ -27,7 +40,7 @@ export function VisitorTracker() {
   useEffect(() => {
     if (!pathname || typeof window === 'undefined') return;
 
-    // Do not track internal management, admin, auth, or API routes
+    // Do not track internal management, auth, or admin routes
     if (isExcludedPath(pathname)) return;
 
     const now = Date.now();
@@ -53,19 +66,14 @@ export function VisitorTracker() {
       }
     }
 
-    const referrer = document.referrer || undefined;
-
     try {
-      fetch('/api/analytics/visit/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const visitorId = getOrCreateVisitorId();
+      writeDb((draft) => {
+        draft.pageviews.push({
           path: pathname,
-          referrer,
-        }),
-        keepalive: true,
-      }).catch(() => {
-        // Silently catch network failures so visitor experience is never impacted
+          timestamp: new Date().toISOString(),
+          visitorId,
+        });
       });
     } catch {
       // Ignore background analytics errors

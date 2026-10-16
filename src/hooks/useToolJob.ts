@@ -52,6 +52,8 @@ export interface UseToolJobResult extends ToolJobState {
   run: <T>(work: (reporter: JobReporter) => Promise<T>) => Promise<T | undefined>;
   cancel: () => void;
   reset: () => void;
+  resultUrl?: string;
+  setResultUrl: (url: string | null) => void;
 }
 
 /**
@@ -63,7 +65,17 @@ export interface UseToolJobResult extends ToolJobState {
  */
 export function useToolJob(): UseToolJobResult {
   const [state, setState] = useState<ToolJobState>(IDLE);
+  const [resultUrl, setResultUrlState] = useState<string | undefined>(undefined);
   const reporterRef = useRef<JobReporter | null>(null);
+
+  useEffect(() => {
+    return () => {
+      // Automatically free Blob memory when component unmounts or job resets
+      if (resultUrl && resultUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(resultUrl);
+      }
+    };
+  }, [resultUrl]);
 
   useEffect(() => {
     // Any in-flight job is cancelled when the tool unmounts, so navigating away
@@ -120,10 +132,15 @@ export function useToolJob(): UseToolJobResult {
   const reset = useCallback(() => {
     reporterRef.current?.dispose();
     reporterRef.current = null;
+    setResultUrlState(undefined);
     setState(IDLE);
   }, []);
 
-  return { ...state, run, cancel, reset };
+  const setResultUrl = useCallback((url: string | null) => {
+    setResultUrlState(url ?? undefined);
+  }, []);
+
+  return { ...state, run, cancel, reset, resultUrl, setResultUrl };
 }
 
 type ToolJobResultRunner = <T>(work: (reporter: JobReporter) => Promise<T>) => Promise<T | undefined>;

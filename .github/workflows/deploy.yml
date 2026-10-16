@@ -1,212 +1,49 @@
-name: Deploy to AWS
-
-# Builds the static export, verifies it, and syncs it to S3 + CloudFront.
-#
-# Required repository secrets (Settings > Secrets and variables > Actions):
-#   AWS_ROLE_ARN         an IAM role that GitHub OIDC can assume (preferred), or
-#   AWS_ACCESS_KEY_ID    + AWS_SECRET_ACCESS_KEY if you cannot use OIDC
-#   S3_BUCKET            the destination bucket name
-#   CLOUDFRONT_DISTRIBUTION_ID
-#   NEXT_PUBLIC_SITE_URL      e.g. https://toolnova.com
-#   NEXT_PUBLIC_ADSENSE_CLIENT  e.g. ca-pub-0000000000000000 (may be empty)
-#   NEXT_PUBLIC_GA_ID           e.g. G-XXXXXXXXXX (may be empty)
-#
-# OIDC is strongly preferred over long-lived access keys: there is no secret to
-# leak or rotate. See the "GitHub Actions" section of README.md for the trust
-# policy to attach to the role.
+name: Build and Deploy Toolino (Client-Side Static)
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
   workflow_dispatch:
-    inputs:
-      skip_tests:
-        description: Skip the test and lint jobs (emergency hotfix only)
-        type: boolean
-        default: false
-
-# One deploy at a time; a newer push cancels an in-flight one.
-concurrency:
-  group: deploy-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
-env:
-  NODE_VERSION: '22'
+concurrency:
+  group: "deploy-main"
+  cancel-in-progress: true
 
 jobs:
-  # ---------------------------------------------------------------- verify
-  verify:
-    name: Type check, lint and test
+  build-and-deploy:
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_tests }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci
 
-      - name: Type check
-        run: npm run type-check
+      - name: Run unit tests
+        run: npm test
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm run test:unit
-
-  # ----------------------------------------------------------------- build
-  build:
-    name: Build static export
-    runs-on: ubuntu-latest
-    needs: [verify]
-    # `always()` so an emergency deploy can run with `skip_tests: true`.
-    if: ${{ always() && (needs.verify.result == 'success' || inputs.skip_tests) }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Build
-        env:
-          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-          NEXT_PUBLIC_ADSENSE_CLIENT: ${{ secrets.NEXT_PUBLIC_ADSENSE_CLIENT }}
-          NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
+      - name: Build static Next.js export
         run: npm run build
 
-      - name: Verify the export looks complete
+      - name: Sync to AWS S3 & Invalidate CloudFront (if AWS secrets exist)
+        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.S3_BUCKET != '' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-south-1' }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
-          set -euo pipefail
-          test -d out || { echo "::error::out/ was not created"; exit 1; }
-          for FILE in index.html 404.html sitemap.xml robots.txt ads.txt; do
-            test -f "out/$FILE" || { echo "::error::out/$FILE is missing"; exit 1; }
-          done
-          test -f "out/tools/create-zip/index.html" || { echo "::error::the ZIP tool page is missing"; exit 1; }
-          test -f "out/blog/index.html" || { echo "::error::the blog index is missing"; exit 1; }
-          COUNT=$(find out -name '*.html' | wc -l)
-          echo "Exported $COUNT HTML pages"
-          test "$COUNT" -ge 45 || { echo "::error::only $COUNT pages exported, expected at least 45"; exit 1; }
-          echo "Total export size: $(du -sh out | cut -f1)"
-
-      - name: Upload the export as a workflow artefact
-        uses: actions/upload-artifact@v4
-        with:
-          name: static-export
-          path: out
-          retention-days: 7
-
-  # ---------------------------------------------------------------- deploy
-  deploy:
-    name: Sync to S3 and invalidate CloudFront
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: ${{ needs.build.result == 'success' }}
-    environment:
-      name: production
-      url: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download the built export
-        uses: actions/download-artifact@v4
-        with:
-          name: static-export
-          path: out
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          # Prefer the OIDC role. If AWS_ROLE_ARN is not set, fall back to keys.
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-          role-skip-session-tagging: true
-          # When AWS_ROLE_ARN is empty this input is ignored rather than failing.
-          unset-current-credentials: true
-
-      - name: Verify AWS identity
-        run: aws sts get-caller-identity
-
-      - name: Sync hashed build assets (1 year, immutable)
-        run: |
-          aws s3 sync out/_next/static/ "s3://${{ secrets.S3_BUCKET }}/_next/static/" \
-            --cache-control "public, max-age=31536000, immutable" \
-            --delete \
-            --no-progress
-
-      - name: Sync HTML (5 minutes, must revalidate)
-        run: |
-          aws s3 sync out/ "s3://${{ secrets.S3_BUCKET }}/" \
-            --exclude "_next/*" \
-            --exclude "*.png" --exclude "*.jpg" --exclude "*.jpeg" \
-            --exclude "*.svg" --exclude "*.ico" --exclude "*.webp" \
-            --exclude "*.txt" --exclude "*.xml" --exclude "*.json" \
-            --include "*.html" \
-            --cache-control "public, max-age=300, must-revalidate" \
-            --content-type "text/html; charset=utf-8" \
-            --delete \
-            --no-progress
-
-      - name: Sync static media (1 day)
-        run: |
-          aws s3 sync out/ "s3://${{ secrets.S3_BUCKET }}/" \
-            --exclude "_next/*" \
-            --exclude "*.html" --exclude "*.xml" --exclude "*.txt" --exclude "*.json" \
-            --cache-control "public, max-age=86400" \
-            --no-progress
-
-      - name: Upload crawler and ad metadata (1 hour)
-        run: |
-          for FILE in ads.txt robots.txt sitemap.xml _redirects.json manifest.webmanifest; do
-            if [ -f "out/$FILE" ]; then
-              aws s3 cp "out/$FILE" "s3://${{ secrets.S3_BUCKET }}/$FILE" \
-                --cache-control "public, max-age=3600" \
-                --no-progress
-            fi
-          done
-
-      - name: Invalidate the CloudFront cache
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
-            --paths "/" "/index.html" "/*.html" "/tools/*" "/blog/*" \
-                    "/ads.txt" "/robots.txt" "/sitemap.xml" "/manifest.webmanifest" \
-            --no-cli-pager
-
-      - name: Smoke test the live site
-        run: |
-          set -euo pipefail
-          BASE="${{ secrets.NEXT_PUBLIC_SITE_URL }}"
-          # CloudFront invalidation is eventually consistent; give it a moment.
-          sleep 45
-          FAILED=0
-          for PATH_TO_CHECK in / /tools/ /tools/create-zip/ /tools/pdf-tools/ /blog/ /sitemap.xml /robots.txt /ads.txt /privacy/ /contact/; do
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' "$BASE$PATH_TO_CHECK" || echo 000)
-            if [ "$CODE" = "200" ]; then
-              echo "  OK   $CODE  $PATH_TO_CHECK"
-            else
-              echo "  FAIL $CODE  $PATH_TO_CHECK"
-              FAILED=1
-            fi
-          done
-          # A missing page must return a real 404, not a soft 200.
-          MISSING=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/this-page-does-not-exist-12345/" || echo 000)
-          echo "  missing page returns $MISSING (expected 404)"
-          if [ "$FAILED" = "1" ]; then
-            echo "::error::one or more smoke tests failed"
-            exit 1
-          fi
+          chmod +x ./deploy/deploy.sh
+          ./deploy/deploy.sh

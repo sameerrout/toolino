@@ -10,6 +10,7 @@
 
 import { useMemo, useState } from 'react';
 import { Send, CheckCircle2, AlertTriangle, Loader2, MessageSquare } from 'lucide-react';
+import { writeDb } from '@/lib/db';
 
 type Topic = 'bug' | 'question' | 'feedback' | 'business' | 'legal' | 'other';
 
@@ -62,21 +63,15 @@ export function ContactForm() {
     setSubmitting(true);
     try {
       const selectedTopic = TOPICS.find((entry) => entry.value === topic)?.label ?? 'General Inquiry';
-      const res = await fetch('/api/contact/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      writeDb((draft) => {
+        draft.messages.unshift({
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `msg_${Date.now()}`,
           name: name.trim(),
           email: email.trim(),
-          category: selectedTopic,
-          message: message.trim(),
-        }),
+          message: `[${selectedTopic}] ${message.trim()}`,
+          createdAt: new Date().toISOString(),
+        });
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || "We couldn't send your message right now. Please try again.");
-      }
 
       setSuccess(true);
       setName('');

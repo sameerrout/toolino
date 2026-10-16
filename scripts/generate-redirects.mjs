@@ -40,29 +40,9 @@ const SITE_URL = (
  * features and retired sections.
  */
 const SITE_REDIRECTS = [
-  // PDF Summarizer was removed entirely; its addresses go to the PDF hub.
-  { from: '/pdf-summarizer', to: '/tools/pdf-tools/' },
-  { from: '/pdf-analyser', to: '/tools/pdf-tools/' },
-  { from: '/pdf-analyzer', to: '/tools/pdf-tools/' },
-  { from: '/summarize-pdf', to: '/tools/pdf-tools/' },
-  // PDF to PowerPoint was removed; see README for how to restore it.
-  { from: '/pdf-to-powerpoint', to: '/tools/pdf-tools/' },
-  { from: '/pdf-to-pptx', to: '/tools/pdf-tools/' },
-  { from: '/pdf2pptx', to: '/tools/pdf-tools/' },
-  { from: '/pdf-to-word', to: '/tools/pdf-tools/' },
-  { from: '/pdf-to-docx', to: '/tools/pdf-tools/' },
-  // Removed tools: PDF Edit & PIN Code Lookup
-  { from: '/edit-pdf', to: '/tools/pdf-tools/' },
-  { from: '/pdf-editor', to: '/tools/pdf-tools/' },
-  { from: '/editor-pdf', to: '/tools/pdf-tools/' },
-  { from: '/tools/edit-pdf', to: '/tools/pdf-tools/' },
-  { from: '/annotate-pdf', to: '/tools/pdf-tools/' },
-  { from: '/write-on-pdf', to: '/tools/pdf-tools/' },
-  { from: '/pin-code-lookup', to: '/tools/text-tools/' },
-  { from: '/pincode-lookup', to: '/tools/text-tools/' },
-  { from: '/pincode-finder', to: '/tools/text-tools/' },
-  { from: '/india-pincode', to: '/tools/text-tools/' },
-  { from: '/tools/pin-code-lookup', to: '/tools/text-tools/' },
+  // Clean redirects for duplicate routes
+  { from: '/signin', to: '/login/' },
+  { from: '/admin', to: '/manager/' },
   // Retired hub URLs folded into the new five-hub structure.
   { from: '/dashboard', to: '/' },
   { from: '/download', to: '/' },

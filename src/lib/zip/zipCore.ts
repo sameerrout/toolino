@@ -220,6 +220,18 @@ export function checkArchiveMemory(
   return { level: 'none', message: '' };
 }
 
+export const MAX_EXTRACTED_TOTAL_BYTES = 250 * 1024 * 1024; // 250 MB max uncompressed total
+export const MAX_FILES_IN_ARCHIVE = 500;
+
+export function sanitizeZipEntryPath(rawPath: string): string {
+  // Strip leading slashes and parent directory traversal (../)
+  return rawPath
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter((segment) => segment && segment !== '.' && segment !== '..')
+    .join('/');
+}
+
 /**
  * fflate tracks offsets in 32-bit numbers, so a single archive must stay below
  * the 4 GiB ZIP32 ceiling. We stop well before that and tell the user to split.

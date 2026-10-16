@@ -201,3 +201,27 @@ export function isMemoryPressureHigh(): boolean {
   if (!perf.memory) return false;
   return perf.memory.usedJSHeapSize / perf.memory.jsHeapSizeLimit > 0.9;
 }
+
+export async function validateFileMagicBytes(
+  file: File,
+  expectedType: 'pdf' | 'zip' | 'image'
+): Promise<boolean> {
+  const buffer = await file.slice(0, 8).arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  if (expectedType === 'pdf') {
+    // %PDF- (25 50 44 46 2D)
+    return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+  }
+  if (expectedType === 'zip') {
+    // PK\x03\x04 (50 4B 03 04)
+    return bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
+  }
+  if (expectedType === 'image') {
+    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+    const isJpg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    const isWebp = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
+    return isPng || isJpg || isWebp;
+  }
+  return false;
+}
+

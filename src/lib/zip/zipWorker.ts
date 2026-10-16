@@ -18,11 +18,14 @@
  */
 
 import { Unzip, UnzipInflate, Zip, ZipDeflate, ZipPassThrough } from 'fflate';
-import type {
-  ExtractEntry,
-  ExtractWorkerOptions,
-  ZipEntryRequest,
-  ZipWorkerOptions,
+import {
+  sanitizeZipEntryPath,
+  MAX_EXTRACTED_TOTAL_BYTES,
+  MAX_FILES_IN_ARCHIVE,
+  type ExtractEntry,
+  type ExtractWorkerOptions,
+  type ZipEntryRequest,
+  type ZipWorkerOptions,
 } from './zipCore';
 
 /**
@@ -259,8 +262,16 @@ async function extractZip(id: number, payload: ExtractWorkerOptions): Promise<Ex
       }
 
       if (final) {
+        if (entries.length >= MAX_FILES_IN_ARCHIVE) {
+          throw new Error(`Archive exceeds maximum file limit of ${MAX_FILES_IN_ARCHIVE} entries.`);
+        }
+        if (totalSize + size > MAX_EXTRACTED_TOTAL_BYTES) {
+          throw new Error('Archive exceeds maximum uncompressed size limit of 250 MB.');
+        }
+
+        const safePath = sanitizeZipEntryPath(file.name);
         const entry: ExtractEntry = {
-          path: file.name,
+          path: safePath,
           size,
           compressedSize: file.size ?? 0,
           isDirectory: file.name.endsWith('/'),
@@ -271,7 +282,7 @@ async function extractZip(id: number, payload: ExtractWorkerOptions): Promise<Ex
         reportProgress(
           id,
           Math.min(0.95, entries.length / Math.max(entries.length + 4, 10)),
-          `Reading ${file.name}`
+          `Reading ${safePath}`
         );
       }
     };

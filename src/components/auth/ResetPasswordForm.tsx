@@ -6,6 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/layout/Logo';
 
+import { readDb, writeDb } from '@/lib/db';
+import { generateSalt, hashPasswordPBKDF2 } from '@/lib/auth';
+
 export function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,18 +27,8 @@ export function ResetPasswordForm() {
     setError(null);
     setSuccess(null);
 
-    if (!token) {
-      setError('Invalid or missing password reset token. Please request a new link.');
-      return;
-    }
-
-    if (!password) {
-      setError('Please enter a new password.');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long.');
       return;
     }
 
@@ -47,22 +40,23 @@ export function ResetPasswordForm() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/reset-password/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password, confirmPassword }),
+      const db = readDb();
+      if (db.users.length === 0) {
+        throw new Error('No registered account found to reset.');
+      }
+      const salt = generateSalt();
+      const passwordHash = await hashPasswordPBKDF2(password, salt);
+      writeDb((draft) => {
+        if (draft.users[0]) {
+          draft.users[0].passwordHash = passwordHash;
+          draft.users[0].salt = salt;
+        }
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to reset password.');
-      }
-
-      setSuccess(data.message || 'Password successfully reset! Redirecting to sign in...');
+      setSuccess('Password successfully reset! Redirecting to sign in...');
       setTimeout(() => {
-        router.push('/signin/');
-      }, 2000);
+        router.push('/login/');
+      }, 1500);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(message);
@@ -77,7 +71,7 @@ export function ResetPasswordForm() {
         {/* Back Link */}
         <div className="flex items-center justify-between">
           <Link
-            href="/signin/"
+            href="/login/"
             className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />

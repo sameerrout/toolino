@@ -1,171 +1,140 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { readDb, writeDb, clearDb } from '@/lib/db';
 import {
-  hashPassword,
-  verifyPassword,
-  registerEmailUser,
-  authenticateEmailUser,
-  createPasswordResetToken,
-  verifyResetToken,
-  resetPasswordWithToken,
-  deleteUserById,
-  deleteUserByEmail,
-  getDb,
-  saveDb,
-} from '@/lib/db';
-import { createSessionToken, verifySessionToken } from '@/lib/auth';
+  generateSalt,
+  hashPasswordPBKDF2,
+  registerClientUser,
+  loginClientUser,
+  setSession,
+  getSession,
+  clearSession,
+  isManagerEmail,
+} from '@/lib/auth';
 
-describe('Authentication & Password Hashing', () => {
-  beforeAll(() => {
-    process.env.SESSION_SECRET = 'test-session-secret-for-vitest-32-chars-long!!';
-  });
-
+describe('Hardened Client Authentication & Web Crypto DB Suite', () => {
   beforeEach(() => {
-    // Clear test state
-    const db = getDb();
-    db.users = db.users.filter((u) => !u.email.endsWith('@test-auth.com'));
-    saveDb(db);
+    clearDb();
+    // Clear localStorage mock
+    if (typeof window !== 'undefined') {
+      window.localStorage.clear();
+    }
   });
 
-  afterAll(() => {
-    // Clean up test users and events after test suite completes
-    const db = getDb();
-    db.users = db.users.filter((u) => !u.email.endsWith('@test-auth.com'));
-    db.events = db.events.filter((e) => !e.email || !e.email.endsWith('@test-auth.com'));
-    saveDb(db);
+  it('generates random hex salt and hashes password with PBKDF2 (100,000 iterations)', async () => {
+    const salt = generateSalt();
+    expect(salt).toBeDefined();
+    expect(typeof salt).toBe('string');
+    expect(salt.length).toBe(32); // 16 bytes = 32 hex chars
+
+    const pass = 'MySuperSecurePass123!';
+    const hash1 = await hashPasswordPBKDF2(pass, salt);
+    const hash2 = await hashPasswordPBKDF2(pass, salt);
+
+    expect(hash1).toBe(hash2);
+    expect(hash1.length).toBe(64); // 256 bits = 64 hex chars
+
+    // Different salt yields different hash
+    const otherSalt = generateSalt();
+    const otherHash = await hashPasswordPBKDF2(pass, otherSalt);
+    expect(otherHash).not.toBe(hash1);
   });
 
-  it('securely hashes passwords with salt and verifies correctly', () => {
-    const password = 'SuperSecretPassword123!';
-    const hash = hashPassword(password);
+  it('registers a new client user and establishes active session', async () => {
+    const res = await registerClientUser({
+      name: 'Test Member',
+      email: 'member@test.com',
+      password: 'StrongPassword123!',
+    });
 
-    expect(hash).toContain(':');
-    expect(hash).not.toBe(password);
+    expect(res.ok).toBe(true);
+    expect(res.user).toBeDefined();
+    expect(res.user?.email).toBe('member@test.com');
+    expect(res.user?.name).toBe('Test Member');
+    expect(res.user?.role).toBe('user');
 
-    // Verify true for matching password
-    expect(verifyPassword(password, hash)).toBe(true);
+    // Verify session was set
+    const session = getSession();
+    expect(session).toBeDefined();
+    expect(session?.email).toBe('member@test.com');
 
-    // Verify false for incorrect password
-    expect(verifyPassword('WrongPassword123!', hash)).toBe(false);
+    // Duplicate registration should fail
+    const dup = await registerClientUser({
+      name: 'Duplicate',
+      email: 'member@test.com',
+      password: 'StrongPassword123!',
+    });
+    expect(dup.ok).toBe(false);
+    expect(dup.error).toContain('already exists');
   });
 
-  it('registers new users and prevents duplicate email registration', () => {
-    const testEmail = 'john.doe@test-auth.com';
-    const regResult = registerEmailUser(testEmail, 'password123', 'John Doe');
+  it('authenticates valid credentials and rejects incorrect passwords', async () => {
+    await registerClientUser({
+      name: 'Login User',
+      email: 'login@test.com',
+      password: 'CorrectPassword123!',
+    });
 
-    expect(regResult.error).toBeUndefined();
-    expect(regResult.user).toBeDefined();
-    expect(regResult.user?.email).toBe(testEmail);
-    expect(regResult.user?.passwordHash).toBeDefined();
-    expect(regResult.user?.passwordHash).not.toBe('password123');
+    // Valid login
+    const valid = await loginClientUser('login@test.com', 'CorrectPassword123!');
+    expect(valid.ok).toBe(true);
+    expect(valid.user?.email).toBe('login@test.com');
 
-    // Duplicate registration attempt
-    const dupResult = registerEmailUser(testEmail, 'anotherPassword');
-    expect(dupResult.user).toBeUndefined();
-    expect(dupResult.error).toBe('An account with this email already exists.');
-  });
-
-  it('authenticates valid users and rejects invalid credentials', () => {
-    const testEmail = 'alice@test-auth.com';
-    registerEmailUser(testEmail, 'securePass789', 'Alice');
-
-    // Successful login
-    const loginOk = authenticateEmailUser(testEmail, 'securePass789');
-    expect(loginOk.error).toBeUndefined();
-    expect(loginOk.user?.email).toBe(testEmail);
-
-    // Wrong password
-    const loginFail = authenticateEmailUser(testEmail, 'wrongPassword');
-    expect(loginFail.user).toBeUndefined();
-    expect(loginFail.error).toBe('Invalid email or password.');
+    // Invalid password
+    const invalid = await loginClientUser('login@test.com', 'WrongPassword!');
+    expect(invalid.ok).toBe(false);
+    expect(invalid.error).toBe('Invalid email or password.');
 
     // Non-existent user
-    const noUser = authenticateEmailUser('nobody@test-auth.com', 'securePass789');
-    expect(noUser.user).toBeUndefined();
-    expect(noUser.error).toBe('Invalid email or password.');
+    const nonExistent = await loginClientUser('ghost@test.com', 'AnyPassword123!');
+    expect(nonExistent.ok).toBe(false);
+    expect(nonExistent.error).toBe('Invalid email or password.');
   });
 
-  it('creates and verifies cryptographically signed session tokens', () => {
+  it('correctly sets, retrieves, and clears local session state', () => {
     const mockUser = {
-      id: 'usr_test_123',
-      email: 'session.user@test-auth.com',
-      name: 'Session User',
+      id: 'usr_abc',
+      name: 'Session Guy',
+      email: 'guy@test.com',
+      role: 'user' as const,
+      createdAt: new Date().toISOString(),
     };
 
-    const token = createSessionToken(mockUser);
-    expect(token).toBeDefined();
-    expect(token.split('.').length).toBe(2);
+    setSession(mockUser);
+    const active = getSession();
+    expect(active?.id).toBe('usr_abc');
+    expect(active?.email).toBe('guy@test.com');
 
-    const verified = verifySessionToken(token);
-    expect(verified).not.toBeNull();
-    expect(verified?.id).toBe(mockUser.id);
-    expect(verified?.email).toBe(mockUser.email);
-
-    // Tampered token must fail verification
-    const tampered = token.slice(0, -4) + 'abcd';
-    expect(verifySessionToken(tampered)).toBeNull();
+    clearSession();
+    expect(getSession()).toBeNull();
   });
 
-  it('handles forgot password token creation, validation, and resetting', () => {
-    const testEmail = 'bob@test-auth.com';
-    registerEmailUser(testEmail, 'initialPassword123', 'Bob');
+  it('assigns manager role for authorized manager emails', async () => {
+    expect(isManagerEmail('sameerrout2004@gmail.com')).toBe(true);
+    expect(isManagerEmail('someoneelse@gmail.com')).toBe(false);
 
-    // Request reset token
-    const tokenResult = createPasswordResetToken(testEmail);
-    expect(tokenResult.success).toBe(true);
-    expect(tokenResult.token).toBeDefined();
+    const mgr = await registerClientUser({
+      name: 'Sameer Manager',
+      email: 'sameerrout2004@gmail.com',
+      password: 'ManagerPassword123!',
+    });
 
-    const resetToken = tokenResult.token!;
-
-    // Verify token
-    const verifyResult = verifyResetToken(resetToken);
-    expect(verifyResult.valid).toBe(true);
-    expect(verifyResult.email).toBe(testEmail);
-
-    // Reset password with new password
-    const resetResult = resetPasswordWithToken(resetToken, 'newPassword456!');
-    expect(resetResult.success).toBe(true);
-
-    // Old password should now fail
-    const oldLogin = authenticateEmailUser(testEmail, 'initialPassword123');
-    expect(oldLogin.user).toBeUndefined();
-
-    // New password should now succeed
-    const newLogin = authenticateEmailUser(testEmail, 'newPassword456!');
-    expect(newLogin.user).toBeDefined();
-    expect(newLogin.user?.email).toBe(testEmail);
+    expect(mgr.ok).toBe(true);
+    expect(mgr.user?.role).toBe('manager');
   });
 
-  it('permanently deletes a registered member and prevents login', () => {
-    const testEmail = 'deleteme@test-auth.com';
-    const reg = registerEmailUser(testEmail, 'password123', 'To Be Deleted');
-    expect(reg.user).toBeDefined();
+  it('defensively caps writeDb logs to prevent localStorage quota overflow', () => {
+    // Fill pageviews with more than 500 items
+    writeDb((draft) => {
+      for (let i = 0; i < 600; i++) {
+        draft.pageviews.push({
+          path: `/tool-${i}`,
+          timestamp: new Date().toISOString(),
+          visitorId: `vid_${i}`,
+        });
+      }
+    });
 
-    const dbBefore = getDb();
-    expect(dbBefore.users.some((u) => u.email === testEmail)).toBe(true);
-
-    // Delete user
-    const deleteResult = deleteUserById(reg.user!.id);
-    expect(deleteResult.success).toBe(true);
-    expect(deleteResult.user?.email).toBe(testEmail);
-
-    // User must be removed from DB
-    const dbAfter = getDb();
-    expect(dbAfter.users.some((u) => u.email === testEmail)).toBe(false);
-
-    // Member deleted event must be recorded in Recent Activity
-    const deleteEvent = dbAfter.events.find((e) => e.type === 'member_delete' && e.email === testEmail);
-    expect(deleteEvent).toBeDefined();
-
-    // User must no longer be able to log in
-    const loginAttempt = authenticateEmailUser(testEmail, 'password123');
-    expect(loginAttempt.user).toBeUndefined();
-    expect(loginAttempt.error).toBe('Invalid email or password.');
-  });
-
-  it('protects manager accounts from being deleted', () => {
-    // Attempting to delete authorized manager
-    const managerResult = deleteUserByEmail('sameerrout2004@gmail.com');
-    expect(managerResult.success).toBe(false);
-    expect(managerResult.error).toContain('Cannot delete an authorized manager account');
+    const db = readDb();
+    expect(db.pageviews.length).toBeLessThanOrEqual(500);
   });
 });

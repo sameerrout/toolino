@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/layout/Logo';
+import { loginClientUser } from '@/lib/auth';
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -34,22 +35,16 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail, password }),
-      });
-
-      const data = await res.json();
+      const res = await loginClientUser(trimmedEmail, password);
 
       if (!res.ok) {
-        throw new Error(data.error || 'Invalid email or password.');
+        throw new Error(res.error || 'Invalid email or password.');
       }
 
       // Navigate with full state update
       const target = redirectUrl && redirectUrl.startsWith('/')
         ? redirectUrl
-        : data.user?.isManager
+        : res.user?.role === 'manager'
           ? '/manager/'
           : '/';
       window.location.href = target;

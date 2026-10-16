@@ -4,6 +4,9 @@ import {
   checkArchiveMemory,
   shouldStoreFile,
   levelToFflate,
+  sanitizeZipEntryPath,
+  MAX_EXTRACTED_TOTAL_BYTES,
+  MAX_FILES_IN_ARCHIVE,
 } from '@/lib/zip/zipCore';
 
 describe('ZIP Architecture & Entry Logic', () => {
@@ -66,5 +69,17 @@ describe('ZIP Architecture & Entry Logic', () => {
     // Small 5 MB job should pass without warning
     const safeCheck = checkArchiveMemory(5 * 1024 * 1024, lowEndProfile, false);
     expect(safeCheck.level).toBe('none');
+  });
+
+  it('sanitizes zip entry paths preventing path traversal and leading slashes', () => {
+    expect(sanitizeZipEntryPath('../../etc/passwd')).toBe('etc/passwd');
+    expect(sanitizeZipEntryPath('/absolute/path/file.txt')).toBe('absolute/path/file.txt');
+    expect(sanitizeZipEntryPath('folder/./subfolder/../file.txt')).toBe('folder/subfolder/file.txt');
+    expect(sanitizeZipEntryPath('normal\\windows\\path.txt')).toBe('normal/windows/path.txt');
+  });
+
+  it('defines safe extraction thresholds', () => {
+    expect(MAX_EXTRACTED_TOTAL_BYTES).toBe(250 * 1024 * 1024);
+    expect(MAX_FILES_IN_ARCHIVE).toBe(500);
   });
 });

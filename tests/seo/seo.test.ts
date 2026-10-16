@@ -133,5 +133,17 @@ describe('SEO & Metadata Integrity Verification', () => {
     expect(disallow).toContain('/admin/');
     expect(disallow).toContain('/api/');
   });
+
+  it('validates public/ads.txt contains legitimate publisher ID and no placeholders', async () => {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const adsTxtPath = path.resolve(process.cwd(), 'public', 'ads.txt');
+    const content = await fs.readFile(adsTxtPath, 'utf8');
+
+    expect(content).toContain('google.com, pub-1239950394700538, DIRECT, f08c47fec0942fa0');
+    expect(content).not.toContain('pub-XXXXXXXXXXXX');
+    expect(content).not.toContain('unauthorised');
+    expect(content).not.toContain('inert');
+  });
 });
 

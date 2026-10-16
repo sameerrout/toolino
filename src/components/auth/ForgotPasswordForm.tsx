@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Mail, AlertCircle, CheckCircle2, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/layout/Logo';
 
+import { readDb } from '@/lib/db';
+
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -25,22 +27,15 @@ export function ForgotPasswordForm() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/forgot-password/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to process password reset request.');
+      const db = readDb();
+      const exists = db.users.some((u) => u.email === trimmedEmail.toLowerCase());
+      if (exists) {
+        setSuccess('Account verified. In static client-side mode, you may reset your password directly on the reset password screen.');
+      } else {
+        setSuccess('If an account exists for this email, a reset confirmation has been registered.');
       }
-
-      setSuccess(data.message || 'If an account exists for this email, a password reset link has been sent to your inbox.');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
-      setError(message);
+    } catch {
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -52,7 +47,7 @@ export function ForgotPasswordForm() {
         {/* Back Link */}
         <div className="flex items-center justify-between">
           <Link
-            href="/signin/"
+            href="/login/"
             className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />

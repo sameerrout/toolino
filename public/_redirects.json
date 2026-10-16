@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-11T10:55:05.597Z",
+  "generatedAt": "2026-10-16T17:29:23.422Z",
   "redirects": [
     {
       "from": "/files-to-zip",
@@ -462,103 +462,13 @@
       "status": 301
     },
     {
-      "from": "/pdf-summarizer",
-      "to": "/tools/pdf-tools/",
+      "from": "/signin",
+      "to": "/login/",
       "status": 301
     },
     {
-      "from": "/pdf-analyser",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pdf-analyzer",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/summarize-pdf",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pdf-to-powerpoint",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pdf-to-pptx",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pdf2pptx",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pdf-to-word",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pdf-to-docx",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/edit-pdf",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pdf-editor",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/editor-pdf",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/tools/edit-pdf",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/annotate-pdf",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/write-on-pdf",
-      "to": "/tools/pdf-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pin-code-lookup",
-      "to": "/tools/text-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pincode-lookup",
-      "to": "/tools/text-tools/",
-      "status": 301
-    },
-    {
-      "from": "/pincode-finder",
-      "to": "/tools/text-tools/",
-      "status": 301
-    },
-    {
-      "from": "/india-pincode",
-      "to": "/tools/text-tools/",
-      "status": 301
-    },
-    {
-      "from": "/tools/pin-code-lookup",
-      "to": "/tools/text-tools/",
+      "from": "/admin",
+      "to": "/manager/",
       "status": 301
     },
     {

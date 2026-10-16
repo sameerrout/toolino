@@ -6,6 +6,7 @@ import {
   toRoman,
   toAlpha,
 } from '@/lib/pdf';
+import { validateFileMagicBytes } from '@/lib/validation';
 
 describe('PDF Engine Primitives', () => {
   describe('Page Range Parsing', () => {
@@ -61,6 +62,29 @@ describe('PDF Engine Primitives', () => {
       expect(toAlpha(1)).toBe('A');
       expect(toAlpha(26)).toBe('Z');
       expect(toAlpha(27)).toBe('AA');
+    });
+  });
+
+  describe('File Magic Byte Inspection', () => {
+    it('validates pdf magic bytes correctly', async () => {
+      const pdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x35]);
+      const pdfFile = new File([pdfBytes], 'test.pdf', { type: 'application/pdf' });
+      expect(await validateFileMagicBytes(pdfFile, 'pdf')).toBe(true);
+
+      const fakeFile = new File([new Uint8Array([0, 1, 2, 3])], 'fake.pdf');
+      expect(await validateFileMagicBytes(fakeFile, 'pdf')).toBe(false);
+    });
+
+    it('validates zip magic bytes correctly', async () => {
+      const zipBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+      const zipFile = new File([zipBytes], 'test.zip');
+      expect(await validateFileMagicBytes(zipFile, 'zip')).toBe(true);
+    });
+
+    it('validates image magic bytes correctly', async () => {
+      const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const pngFile = new File([pngBytes], 'test.png');
+      expect(await validateFileMagicBytes(pngFile, 'image')).toBe(true);
     });
   });
 });

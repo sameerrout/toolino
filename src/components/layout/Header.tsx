@@ -8,6 +8,7 @@ import { Logo } from './Logo';
 import { CATEGORY_META, CATEGORY_ORDER } from '@/data/categories';
 import { getToolsByCategory } from '@/data/toolRegistry';
 import { toolPath } from '@/lib/tools';
+import { getSession, clearSession } from '@/lib/auth';
 
 /**
  * ToolForForever Header Navigation.
@@ -22,28 +23,24 @@ export function Header() {
   const [user, setUser] = useState<{ email: string; name: string; isManager: boolean; picture?: string } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch current user authentication status
+  // Fetch current user authentication status from client session
   useEffect(() => {
-    fetch('/api/auth/me/')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.authenticated && data?.user) {
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      })
-      .catch(() => setUser(null));
+    const session = getSession();
+    if (session) {
+      setUser({
+        email: session.email,
+        name: session.name,
+        isManager: session.role === 'manager',
+      });
+    } else {
+      setUser(null);
+    }
   }, [pathname]);
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout/', { method: 'POST' });
-      setUser(null);
-      window.location.href = '/';
-    } catch {
-      window.location.reload();
-    }
+  const handleLogout = () => {
+    clearSession();
+    setUser(null);
+    window.location.href = '/';
   };
 
   // Close menus on route change
@@ -202,7 +199,7 @@ export function Header() {
                 Sign Up
               </Link>
               <Link
-                href="/signin/"
+                href="/login/"
                 className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-xs font-semibold shadow-xs"
               >
                 Sign In
@@ -303,7 +300,7 @@ export function Header() {
                 Sign Up
               </Link>
               <Link
-                href="/signin/"
+                href="/login/"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-sm font-semibold text-blue-600 hover:text-blue-700 py-1"
               >

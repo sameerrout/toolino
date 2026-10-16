@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { User, Mail, Lock, Eye, EyeOff, AlertCircle, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/layout/Logo';
+import { registerClientUser } from '@/lib/auth';
 
 export function SignUpForm() {
   const searchParams = useSearchParams();
@@ -54,27 +55,20 @@ export function SignUpForm() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/register/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: trimmedName,
-          email: trimmedEmail,
-          password,
-          confirmPassword,
-        }),
+      const res = await registerClientUser({
+        name: trimmedName,
+        email: trimmedEmail,
+        password,
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create account. Please try again.');
+        throw new Error(res.error || 'Failed to create account. Please try again.');
       }
 
       // Navigate with full state update
       const target = redirectUrl && redirectUrl.startsWith('/')
         ? redirectUrl
-        : data.user?.isManager
+        : res.user?.role === 'manager'
           ? '/manager/'
           : '/';
       window.location.href = target;
@@ -248,7 +242,7 @@ export function SignUpForm() {
             <p>
               Already have an account?{' '}
               <Link
-                href="/signin/"
+                href="/login/"
                 className="font-semibold text-slate-900 hover:text-blue-600 transition-colors"
               >
                 Sign In

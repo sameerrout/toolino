@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { writeDb } from '@/lib/db';
 
 export function useTrackToolUsage(toolSlug: string) {
   const trackedRef = useRef(false);
@@ -10,15 +11,17 @@ export function useTrackToolUsage(toolSlug: string) {
     trackedRef.current = true;
 
     try {
-      fetch('/api/analytics/track/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toolSlug }),
-      }).catch(() => {
-        // Silent catch: tracking must never interrupt user experience
+      writeDb((draft) => {
+        draft.toolUsage.push({
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `usage_${Date.now()}`,
+          slug: toolSlug,
+          timestamp: new Date().toISOString(),
+          durationMs: 0,
+          success: true,
+        });
       });
     } catch {
-      // Ignore errors
+      // Silent catch: tracking must never interrupt user experience
     }
   }, [toolSlug]);
 }

@@ -1,11 +1,2 @@
 # ToolForForever AdSense publisher declaration
-#
-# Replace pub-XXXXXXXXXXXXXXXX with your own AdSense publisher ID (it is the same
-# value you set in NEXT_PUBLIC_ADSENSE_CLIENT, without the "ca-" prefix) and
-# remove this comment block. Until you do, this line is inert: an unauthorised
-# ads.txt entry does not authorise anyone, because the ID does not exist.
-#
-# Format: <domain of the ad system>, <publisher ID>, <relationship>, <certification authority ID>
-# Docs:  https://support.google.com/adsense/answer/12171612
-
-google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+google.com, pub-1239950394700538, DIRECT, f08c47fec0942fa0
